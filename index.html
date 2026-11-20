@@ -1,0 +1,3175 @@
+```html
+<!DOCTYPE html>
+<html lang="id">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>KESLING TRACK - Aplikasi Kesehatan Lingkungan</title>
+    <!-- Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- Lucide Icons -->
+    <script src="https://unpkg.com/lucide@latest"></script>
+    <!-- SheetJS (XLSX) untuk Ekspor Excel -->
+    <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
+    <!-- Firebase SDK (Compat untuk integrasi single-file) -->
+    <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-database-compat.js"></script>
+    <!-- Google Font: Inter -->
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+    <style>
+        body {
+            font-family: 'Inter', sans-serif;
+            background-color: #f1f5f9;
+            color: #0f172a;
+        }
+        .no-scrollbar::-webkit-scrollbar {
+            display: none;
+        }
+        .no-scrollbar {
+            -ms-overflow-style: none;
+            scrollbar-width: none;
+        }
+        .nav-item.active {
+            color: #0f766e;
+            background-color: #f0fdfa;
+        }
+        @media (min-width: 768px) {
+            body {
+                background-color: #e2e8f0;
+            }
+            #appShell {
+                max-width: 68rem !important;
+                min-height: calc(100vh - 2rem) !important;
+                margin-top: 1rem;
+                margin-bottom: 1rem;
+                border-radius: 1.5rem;
+                border: 1px solid #cbd5e1;
+                padding-bottom: 2rem !important;
+            }
+            #appShell > header {
+                border-radius: 1.5rem 1.5rem 1.25rem 1.25rem;
+                padding-left: 1.75rem;
+                padding-right: 1.75rem;
+            }
+            #appShell > main {
+                padding-left: 1.75rem;
+                padding-right: 1.75rem;
+                padding-top: 1.5rem;
+            }
+            #appShell > nav {
+                position: sticky !important;
+                bottom: auto !important;
+                top: 5.5rem;
+                left: auto !important;
+                transform: none !important;
+                max-width: 64rem !important;
+                margin: 1rem auto 0 auto;
+                border-radius: 0.9rem;
+                border: 1px solid #cbd5e1;
+                box-shadow: 0 4px 14px -2px rgba(15, 23, 42, 0.08) !important;
+                z-index: 20 !important;
+            }
+            #loginScreen > div {
+                max-width: 28rem !important;
+                min-height: auto !important;
+                margin: auto;
+                border-radius: 1.5rem;
+                border: 1px solid #e2e8f0;
+                box-shadow: 0 25px 50px -12px rgba(15, 23, 42, 0.25);
+            }
+            #toastBanner {
+                bottom: 1.5rem !important;
+            }
+        }
+    </style>
+</head>
+<body class="min-h-screen flex justify-center selection:bg-teal-600 selection:text-white">
+
+    <!-- Mobile & PC Responsive App Shell -->
+    <div id="appShell" class="w-full max-w-md min-h-screen bg-[#f8fafc] text-slate-800 shadow-2xl relative flex flex-col pb-24">
+
+        <!-- Header Aplikasi -->
+        <header class="bg-gradient-to-br from-teal-800 via-teal-700 to-cyan-800 text-white px-4 pt-4 pb-6 rounded-b-3xl shadow-md sticky top-0 z-30">
+            <div class="flex items-center justify-between gap-2">
+                <div class="flex items-center gap-3 min-w-0">
+                    <div class="min-w-0">
+                        <div class="flex items-center gap-1.5 flex-wrap">
+                            <span id="currentDateBadge" class="text-[10px] text-teal-100 truncate"></span>
+                        </div>
+                        <h1 class="text-base md:text-lg font-extrabold tracking-tight truncate mt-0.5">KESLING TRACK</h1>
+                    </div>
+                </div>
+
+                <div class="flex items-center gap-1.5 shrink-0">
+                    <button
+                        type="button"
+                        onclick="openNotificationsModal()"
+                        title="Notifikasi Realtime"
+                        class="relative w-9 h-9 rounded-xl bg-white/10 hover:bg-white/20 active:scale-95 flex items-center justify-center transition shrink-0"
+                    >
+                        <i data-lucide="bell" class="w-4 h-4 text-teal-200 pointer-events-none"></i>
+                        <span id="notifUnreadBadge" class="hidden absolute -top-1 -right-1 min-w-[16px] h-4 px-1 rounded-full bg-rose-500 text-white text-[9px] font-extrabold flex items-center justify-center shadow">0</span>
+                    </button>
+                    <button
+                        type="button"
+                        onclick="switchTab('home')"
+                        title="Beranda"
+                        class="w-9 h-9 rounded-xl bg-white/10 hover:bg-white/20 active:scale-95 flex items-center justify-center transition shrink-0"
+                    >
+                        <i data-lucide="home" class="w-4 h-4 text-teal-200 pointer-events-none"></i>
+                    </button>
+                    <button
+                        type="button"
+                        onclick="openSettingsModal()"
+                        title="Pengaturan"
+                        class="w-9 h-9 rounded-xl bg-white/10 hover:bg-white/20 active:scale-95 flex items-center justify-center transition shrink-0"
+                    >
+                        <i data-lucide="settings" class="w-4 h-4 text-teal-200 pointer-events-none"></i>
+                    </button>
+                </div>
+            </div>
+        </header>
+
+        <!-- Navigasi Utama -->
+        <nav class="fixed bottom-0 left-1/2 -translate-x-1/2 w-full max-w-md bg-white/95 backdrop-blur-md border-t border-slate-200/80 px-2 py-1.5 grid grid-cols-5 gap-1 z-30 shadow-lg">
+            <button
+                type="button"
+                data-nav-tab="home"
+                onclick="switchTab('home')"
+                class="nav-item active flex flex-col md:flex-row items-center justify-center py-1.5 md:py-2 px-1 md:px-3 rounded-xl text-[10px] md:text-xs font-bold text-slate-500 hover:text-teal-700 transition gap-0.5 md:gap-1.5"
+            >
+                <i data-lucide="home" class="w-4 h-4 mb-0.5 md:mb-0 pointer-events-none"></i>
+                <span class="truncate pointer-events-none">Beranda</span>
+            </button>
+            <button
+                type="button"
+                data-nav-tab="sanitasi"
+                onclick="switchTab('sanitasi')"
+                class="nav-item flex flex-col md:flex-row items-center justify-center py-1.5 md:py-2 px-1 md:px-3 rounded-xl text-[10px] md:text-xs font-bold text-slate-500 hover:text-teal-700 transition gap-0.5 md:gap-1.5"
+            >
+                <i data-lucide="clipboard-check" class="w-4 h-4 mb-0.5 md:mb-0 pointer-events-none"></i>
+                <span class="truncate pointer-events-none">Inspeksi</span>
+            </button>
+            <button
+                type="button"
+                data-nav-tab="ipal"
+                onclick="switchTab('ipal')"
+                class="nav-item flex flex-col md:flex-row items-center justify-center py-1.5 md:py-2 px-1 md:px-3 rounded-xl text-[10px] md:text-xs font-bold text-slate-500 hover:text-teal-700 transition gap-0.5 md:gap-1.5"
+            >
+                <i data-lucide="waves" class="w-4 h-4 mb-0.5 md:mb-0 pointer-events-none"></i>
+                <span class="truncate pointer-events-none">IPAL</span>
+            </button>
+            <button
+                type="button"
+                data-nav-tab="b3"
+                onclick="switchTab('b3')"
+                class="nav-item flex flex-col md:flex-row items-center justify-center py-1.5 md:py-2 px-1 md:px-3 rounded-xl text-[10px] md:text-xs font-bold text-slate-500 hover:text-teal-700 transition gap-0.5 md:gap-1.5"
+            >
+                <i data-lucide="biohazard" class="w-4 h-4 mb-0.5 md:mb-0 pointer-events-none"></i>
+                <span class="truncate pointer-events-none">Limbah B3</span>
+            </button>
+            <button
+                type="button"
+                data-nav-tab="sumurbor"
+                onclick="switchTab('sumurbor')"
+                class="nav-item flex flex-col md:flex-row items-center justify-center py-1.5 md:py-2 px-1 md:px-3 rounded-xl text-[10px] md:text-xs font-bold text-slate-500 hover:text-teal-700 transition gap-0.5 md:gap-1.5"
+            >
+                <i data-lucide="gauge" class="w-4 h-4 mb-0.5 md:mb-0 pointer-events-none"></i>
+                <span class="truncate pointer-events-none">Sumur Bor</span>
+            </button>
+        </nav>
+
+        <!-- Konten Utama -->
+        <main class="flex-1 px-4 pt-4 space-y-4">
+
+            <!-- Banner Notifikasi Terbaru Realtime -->
+            <div id="homeLatestNotifBanner" onclick="openNotificationsModal()" class="hidden cursor-pointer bg-teal-900 text-white rounded-2xl px-3.5 py-2.5 shadow-sm border border-teal-700/60 flex items-center justify-between gap-2">
+                <div class="flex items-center gap-2 min-w-0">
+                    <span class="w-2 h-2 rounded-full bg-emerald-400 animate-pulse shrink-0"></span>
+                    <div class="min-w-0">
+                        <div class="text-[10px] font-bold uppercase tracking-wider text-teal-200">Update Laporan Realtime</div>
+                        <div id="homeLatestNotifText" class="text-xs font-semibold truncate">Belum ada notifikasi baru</div>
+                    </div>
+                </div>
+                <span class="text-[10px] font-bold px-2 py-1 rounded-lg bg-white/15 text-teal-100 shrink-0">Lihat</span>
+            </div>
+
+            <!-- BERANDA / RINGKASAN -->
+            <section id="tab-home" class="tab-content space-y-4">
+                <!-- Ringkasan Status Kasus Inspeksi -->
+                <div class="bg-white rounded-2xl p-4 md:p-5 shadow-sm border border-slate-100">
+                    <h3 class="text-xs font-bold uppercase tracking-wider text-slate-500 mb-2.5">Status Temuan Inspeksi</h3>
+                    <div class="grid grid-cols-3 gap-2 md:gap-4 text-center">
+                        <div class="p-2.5 md:p-3.5 rounded-xl bg-rose-50 border border-rose-100">
+                            <div id="homeOpenCount" class="text-lg md:text-2xl font-extrabold text-rose-600">0</div>
+                            <div class="text-[11px] md:text-xs font-semibold text-rose-700">Open</div>
+                        </div>
+                        <div class="p-2.5 md:p-3.5 rounded-xl bg-amber-50 border border-amber-100">
+                            <div id="homeProgresCount" class="text-lg md:text-2xl font-extrabold text-amber-600">0</div>
+                            <div class="text-[11px] md:text-xs font-semibold text-amber-700">Progres</div>
+                        </div>
+                        <div class="p-2.5 md:p-3.5 rounded-xl bg-emerald-50 border border-emerald-100">
+                            <div id="homeCloseCount" class="text-lg md:text-2xl font-extrabold text-emerald-600">0</div>
+                            <div class="text-[11px] md:text-xs font-semibold text-emerald-700">Close</div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <!-- Rekapitulasi Limbah B3 (Infeksius & Non Infeksius) -->
+                    <div class="bg-white rounded-2xl p-4 md:p-5 shadow-sm border border-slate-100">
+                        <div class="flex items-center justify-between mb-2.5">
+                            <h3 class="text-xs font-bold uppercase tracking-wider text-slate-500">Rekapitulasi Limbah B3</h3>
+                            <button type="button" onclick="switchTab('b3')" class="text-[11px] font-bold text-teal-700 hover:underline">Lihat Detail</button>
+                        </div>
+                        <div class="grid grid-cols-2 gap-2.5">
+                            <div class="p-3 rounded-xl bg-rose-50/80 border border-rose-100">
+                                <div class="flex items-center justify-between">
+                                    <span class="text-[11px] font-bold text-rose-800">B3 Infeksius</span>
+                                    <span class="text-[10px] font-semibold text-rose-600">Saldo</span>
+                                </div>
+                                <div id="homeB3InfSaldo" class="text-base md:text-lg font-extrabold text-rose-900 mt-1">0.0 kg</div>
+                                <div id="homeB3InfDihasilkan" class="text-[10px] text-rose-700 mt-0.5">Dihasilkan: 0.0 kg</div>
+                            </div>
+                            <div class="p-3 rounded-xl bg-cyan-50/80 border border-cyan-100">
+                                <div class="flex items-center justify-between">
+                                    <span class="text-[11px] font-bold text-cyan-800">B3 Non Infeksius</span>
+                                    <span class="text-[10px] font-semibold text-cyan-600">Saldo</span>
+                                </div>
+                                <div id="homeB3NonInfSaldo" class="text-base md:text-lg font-extrabold text-cyan-900 mt-1">0.0 kg</div>
+                                <div id="homeB3NonInfDihasilkan" class="text-[10px] text-cyan-700 mt-0.5">Dihasilkan: 0.0 kg</div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Rekapitulasi Debit Sumur Bor (Total Keseluruhan & Terpisah SB 1 / SB 2) -->
+                    <div class="bg-white rounded-2xl p-4 md:p-5 shadow-sm border border-slate-100">
+                        <div class="flex items-center justify-between mb-2.5">
+                            <h3 class="text-xs font-bold uppercase tracking-wider text-slate-500">Debit Sumur Bor</h3>
+                            <button type="button" onclick="switchTab('sumurbor')" class="text-[11px] font-bold text-teal-700 hover:underline">Lihat Detail</button>
+                        </div>
+
+                        <div class="p-3 rounded-xl bg-slate-900 text-white flex items-center justify-between mb-2.5">
+                            <div>
+                                <div class="text-[10px] font-semibold uppercase tracking-wider text-teal-200">Total Debit Keseluruhan</div>
+                                <div class="text-[11px] text-slate-300 mt-0.5">Gabungan Sumur Bor 1 &amp; Sumur Bor 2</div>
+                            </div>
+                            <div id="homeSbTotal" class="text-lg md:text-xl font-extrabold text-teal-300">0.00 m³</div>
+                        </div>
+
+                        <div class="grid grid-cols-2 gap-2.5">
+                            <div class="p-3 rounded-xl bg-indigo-50/80 border border-indigo-100">
+                                <div class="flex items-center justify-between">
+                                    <span class="text-[11px] font-bold text-indigo-800">Sumur Bor 1</span>
+                                    <span class="text-[10px] font-semibold text-indigo-600">Debit</span>
+                                </div>
+                                <div id="homeSb1Debit" class="text-base md:text-lg font-extrabold text-indigo-900 mt-1">0.00 m³</div>
+                            </div>
+                            <div class="p-3 rounded-xl bg-teal-50/80 border border-teal-100">
+                                <div class="flex items-center justify-between">
+                                    <span class="text-[11px] font-bold text-teal-800">Sumur Bor 2</span>
+                                    <span class="text-[10px] font-semibold text-teal-600">Debit</span>
+                                </div>
+                                <div id="homeSb2Debit" class="text-base md:text-lg font-extrabold text-teal-900 mt-1">0.00 m³</div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </section>
+
+            <!-- TAB 1: INSPEKSI -->
+            <section id="tab-sanitasi" class="tab-content hidden space-y-4">
+                <div class="bg-white rounded-2xl p-4 md:p-5 shadow-sm border border-slate-100">
+                    <div class="flex items-center justify-between gap-2 mb-3">
+                        <div>
+                            <h2 class="text-sm md:text-base font-extrabold text-slate-800">Dashboard Inspeksi</h2>
+                            <p class="text-[11px] text-slate-500">Pemantauan temuan &amp; tindak lanjut sanitasi</p>
+                        </div>
+                        <button
+                            type="button"
+                            onclick="toggleInspeksiForm()"
+                            class="px-3 py-2 rounded-xl bg-teal-600 hover:bg-teal-700 active:scale-95 text-white text-xs font-bold flex items-center gap-1.5 shadow-sm transition shrink-0"
+                        >
+                            <i data-lucide="plus-circle" class="w-3.5 h-3.5 pointer-events-none"></i>
+                            <span class="pointer-events-none">Tambah Inspeksi</span>
+                        </button>
+                    </div>
+
+                    <!-- KPI Inspeksi -->
+                    <div class="grid grid-cols-4 gap-1.5 md:gap-3 text-center">
+                        <div class="p-2 md:p-3 rounded-xl bg-slate-50 border border-slate-200/70">
+                            <div id="sanKpiTotal" class="text-base md:text-xl font-extrabold text-slate-800">0</div>
+                            <div class="text-[10px] md:text-xs font-semibold text-slate-500">Total</div>
+                        </div>
+                        <div class="p-2 md:p-3 rounded-xl bg-rose-50 border border-rose-100">
+                            <div id="sanKpiOpen" class="text-base md:text-xl font-extrabold text-rose-600">0</div>
+                            <div class="text-[10px] md:text-xs font-semibold text-rose-700">Open</div>
+                        </div>
+                        <div class="p-2 md:p-3 rounded-xl bg-amber-50 border border-amber-100">
+                            <div id="sanKpiProgres" class="text-base md:text-xl font-extrabold text-amber-600">0</div>
+                            <div class="text-[10px] md:text-xs font-semibold text-amber-700">Progres</div>
+                        </div>
+                        <div class="p-2 md:p-3 rounded-xl bg-emerald-50 border border-emerald-100">
+                            <div id="sanKpiClose" class="text-base md:text-xl font-extrabold text-emerald-600">0</div>
+                            <div class="text-[10px] md:text-xs font-semibold text-emerald-700">Close</div>
+                        </div>
+                    </div>
+
+                    <!-- Ekspor Excel Inspeksi per Bulan -->
+                    <div class="mt-3 pt-3 border-t border-slate-100 flex items-center gap-2">
+                        <input type="month" id="exportMonthSanitasi" class="flex-1 text-xs rounded-xl border border-slate-200 px-2.5 py-2 bg-slate-50 focus:outline-none focus:border-teal-500">
+                        <button type="button" onclick="exportExcel('SAN')" class="px-3 py-2 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-bold flex items-center gap-1.5 transition shrink-0">
+                            <i data-lucide="file-spreadsheet" class="w-3.5 h-3.5 pointer-events-none"></i>
+                            <span class="pointer-events-none">Ekspor</span>
+                        </button>
+                    </div>
+                </div>
+
+                <!-- Form Tambah Inspeksi Baru -->
+                <div id="sanitasiFormCard" class="hidden bg-white rounded-2xl p-4 md:p-5 shadow-sm border border-teal-200">
+                    <div class="flex items-center justify-between mb-3">
+                        <h3 class="text-xs font-extrabold uppercase tracking-wider text-teal-800">Form Inspeksi Baru</h3>
+                        <button type="button" onclick="toggleInspeksiForm(false)" class="text-xs text-slate-400 hover:text-slate-600 font-semibold">Tutup</button>
+                    </div>
+                    <form id="sanitasiForm" onsubmit="handleSanitasiSubmit(event)" class="space-y-3">
+                        <div class="grid grid-cols-1 md:grid-cols-2 gap-2.5">
+                            <div>
+                                <label class="block text-[11px] font-bold text-slate-700 mb-1">Tanggal &amp; Waktu</label>
+                                <input type="datetime-local" id="sanTanggal" required class="w-full text-xs rounded-xl border border-slate-200 px-3 py-2 focus:outline-none focus:border-teal-500">
+                            </div>
+                            <div>
+                                <label class="block text-[11px] font-bold text-slate-700 mb-1">Lantai Lokasi</label>
+                                <select id="sanLantai" required class="w-full text-xs rounded-xl border border-slate-200 px-3 py-2 bg-white focus:outline-none focus:border-teal-500">
+                                    <option value="Lantai 1">Lantai 1</option>
+                                    <option value="Lantai 2">Lantai 2</option>
+                                    <option value="Lantai 3">Lantai 3</option>
+                                    <option value="Lantai 4">Lantai 4</option>
+                                    <option value="Lantai 5 (Rooftop)">Lantai 5 (Rooftop)</option>
+                                </select>
+                            </div>
+                        </div>
+
+                        <div>
+                            <label class="block text-[11px] font-bold text-slate-700 mb-1">Tempat Temuan</label>
+                            <input type="text" id="sanTempat" required placeholder="Contoh: Ruang Rawat Inap / Koridor / Toilet" class="w-full text-xs rounded-xl border border-slate-200 px-3 py-2 focus:outline-none focus:border-teal-500">
+                        </div>
+
+                        <div class="grid grid-cols-1 md:grid-cols-2 gap-2.5">
+                            <div>
+                                <label class="block text-[11px] font-bold text-slate-700 mb-1">Kategori Temuan</label>
+                                <select id="sanKategori" required class="w-full text-xs rounded-xl border border-slate-200 px-3 py-2 bg-white focus:outline-none focus:border-teal-500">
+                                    <option value="Kebersihan Ruangan">Kebersihan Ruangan</option>
+                                    <option value="Pengelolaan Limbah">Pengelolaan Limbah</option>
+                                    <option value="Sanitasi & Drainase">Sanitasi &amp; Drainase</option>
+                                    <option value="Kualitas Air / Hygiene">Kualitas Air / Hygiene</option>
+                                    <option value="Pengendalian Vektor">Pengendalian Vektor</option>
+                                </select>
+                            </div>
+                            <div>
+                                <label class="block text-[11px] font-bold text-slate-700 mb-1">Status Kasus</label>
+                                <select id="sanStatus" required class="w-full text-xs rounded-xl border border-slate-200 px-3 py-2 bg-white focus:outline-none focus:border-teal-500">
+                                    <option value="Open">Open</option>
+                                    <option value="Progres">Progres</option>
+                                    <option value="Close">Close</option>
+                                </select>
+                            </div>
+                        </div>
+
+                        <div class="grid grid-cols-1 md:grid-cols-2 gap-2.5">
+                            <div>
+                                <label class="block text-[11px] font-bold text-slate-700 mb-1">Tindakan Perbaikan</label>
+                                <textarea id="sanPerbaikan" rows="2" required placeholder="Langkah perbaikan langsung yang dilakukan..." class="w-full text-xs rounded-xl border border-slate-200 px-3 py-2 focus:outline-none focus:border-teal-500"></textarea>
+                            </div>
+
+                            <div>
+                                <label class="block text-[11px] font-bold text-slate-700 mb-1">Tindakan Pencegahan</label>
+                                <textarea id="sanPencegahan" rows="2" required placeholder="Langkah pencegahan agar tidak berulang..." class="w-full text-xs rounded-xl border border-slate-200 px-3 py-2 focus:outline-none focus:border-teal-500"></textarea>
+                            </div>
+                        </div>
+
+                        <div class="grid grid-cols-1 md:grid-cols-2 gap-2.5">
+                            <div>
+                                <label class="block text-[11px] font-bold text-slate-700 mb-1">Bukti Dokumentasi Foto</label>
+                                <input type="file" id="sanFoto" accept="image/*" capture="environment" onchange="handlePhotoUpload(event, 'sanFotoPreview', 'sanFotoData')" class="w-full text-xs text-slate-600 file:mr-2 file:py-1.5 file:px-3 file:rounded-lg file:border-0 file:text-xs file:font-bold file:bg-teal-50 file:text-teal-700 hover:file:bg-teal-100">
+                                <input type="hidden" id="sanFotoData">
+                                <img id="sanFotoPreview" src="" alt="Preview Dokumentasi Inspeksi" class="hidden mt-2 w-full h-36 object-cover rounded-xl border border-slate-200">
+                            </div>
+
+                            <div>
+                                <label class="block text-[11px] font-bold text-slate-700 mb-1">Petugas Pelapor (Otomatis)</label>
+                                <input type="text" id="sanPetugas" readonly class="w-full text-xs rounded-xl border border-slate-200 bg-slate-100 text-slate-600 font-semibold px-3 py-2">
+                            </div>
+                        </div>
+
+                        <button type="submit" class="w-full py-2.5 rounded-xl bg-teal-600 hover:bg-teal-700 active:scale-[0.99] text-white text-xs font-bold shadow-sm transition">
+                            Simpan Laporan Inspeksi
+                        </button>
+                    </form>
+                </div>
+
+                <!-- Filter Status & Daftar Temuan -->
+                <div class="bg-white rounded-2xl p-4 md:p-5 shadow-sm border border-slate-100 space-y-3">
+                    <div class="flex items-center justify-between gap-2">
+                        <h3 class="text-xs font-extrabold uppercase tracking-wider text-slate-600">Daftar Kasus Inspeksi</h3>
+                        <select id="sanFilterStatus" onchange="renderSanitasi()" class="text-xs rounded-xl border border-slate-200 px-2.5 py-1.5 bg-slate-50 font-semibold text-slate-700">
+                            <option value="ALL">Semua Status</option>
+                            <option value="Open">Open</option>
+                            <option value="Progres">Progres</option>
+                            <option value="Close">Close</option>
+                        </select>
+                    </div>
+                    <div id="sanitasiList" class="grid grid-cols-1 md:grid-cols-2 gap-2.5"></div>
+                </div>
+
+                <!-- Tabel Riwayat Laporan Inspeksi -->
+                <div class="bg-white rounded-2xl shadow-sm border border-slate-100 overflow-hidden">
+                    <div class="px-4 py-3 border-b border-slate-100 flex items-center justify-between gap-2">
+                        <h3 class="text-xs font-extrabold uppercase tracking-wider text-slate-600">Tabel Riwayat Laporan Inspeksi</h3>
+                        <span id="sanHistoryCount" class="text-[10px] font-bold px-2 py-0.5 rounded-full bg-teal-50 text-teal-700 border border-teal-100">0 laporan</span>
+                    </div>
+                    <div class="overflow-x-auto">
+                        <table class="w-full text-left border-collapse">
+                            <thead class="bg-slate-50 text-[10px] font-bold uppercase text-slate-500 border-b border-slate-100">
+                                <tr>
+                                    <th class="px-2.5 py-2">Waktu</th>
+                                    <th class="px-2 py-2">Lokasi &amp; Lantai</th>
+                                    <th class="px-2 py-2">Kategori</th>
+                                    <th class="px-2 py-2">Perbaikan &amp; Pencegahan</th>
+                                    <th class="px-2 py-2">Status</th>
+                                    <th class="px-2 py-2">Petugas / Foto</th>
+                                    <th class="px-2 py-2 text-center">Aksi</th>
+                                </tr>
+                            </thead>
+                            <tbody id="sanitasiTableBody" class="divide-y divide-slate-100 text-xs text-slate-700"></tbody>
+                        </table>
+                    </div>
+                </div>
+            </section>
+
+            <!-- TAB 2: IPAL -->
+            <section id="tab-ipal" class="tab-content hidden space-y-4">
+                <div class="bg-white rounded-2xl p-4 md:p-5 shadow-sm border border-slate-100">
+                    <div class="flex items-center justify-between gap-2 mb-3">
+                        <div>
+                            <h2 class="text-sm md:text-base font-extrabold text-slate-800">Dashboard Laporan IPAL</h2>
+                            <p class="text-[11px] text-slate-500">Parameter kualitas air limbah &amp; debit outlet</p>
+                        </div>
+                        <button
+                            id="btnTambahIpal"
+                            type="button"
+                            onclick="toggleIpalForm()"
+                            class="px-3 py-2 rounded-xl bg-teal-600 hover:bg-teal-700 active:scale-95 text-white text-xs font-bold flex items-center gap-1.5 shadow-sm transition shrink-0"
+                        >
+                            <i data-lucide="plus-circle" class="w-3.5 h-3.5 pointer-events-none"></i>
+                            <span class="pointer-events-none">Tambah Laporan</span>
+                        </button>
+                    </div>
+
+                    <!-- KPI Terkini IPAL -->
+                    <div class="grid grid-cols-3 md:grid-cols-6 gap-2 text-center">
+                        <div class="p-2 rounded-xl bg-slate-50 border border-slate-100">
+                            <div class="text-[10px] text-slate-500 font-semibold">pH Terkini</div>
+                            <div id="ipalLatestPh" class="text-sm font-extrabold text-slate-800 mt-0.5">-</div>
+                        </div>
+                        <div class="p-2 rounded-xl bg-slate-50 border border-slate-100">
+                            <div class="text-[10px] text-slate-500 font-semibold">COD Terkini</div>
+                            <div id="ipalLatestCod" class="text-sm font-extrabold text-slate-800 mt-0.5">-</div>
+                        </div>
+                        <div class="p-2 rounded-xl bg-slate-50 border border-slate-100">
+                            <div class="text-[10px] text-slate-500 font-semibold">BOD Terkini</div>
+                            <div id="ipalLatestBod" class="text-sm font-extrabold text-slate-800 mt-0.5">-</div>
+                        </div>
+                        <div class="p-2 rounded-xl bg-slate-50 border border-slate-100">
+                            <div class="text-[10px] text-slate-500 font-semibold">TOC Terkini</div>
+                            <div id="ipalLatestToc" class="text-sm font-extrabold text-slate-800 mt-0.5">-</div>
+                        </div>
+                        <div class="p-2 rounded-xl bg-cyan-50/70 border border-cyan-100">
+                            <div class="text-[10px] text-cyan-700 font-semibold">Meteran Outlet</div>
+                            <div id="ipalLatestOutlet" class="text-sm font-extrabold text-cyan-800 mt-0.5">-</div>
+                        </div>
+                        <div class="p-2 rounded-xl bg-teal-50/70 border border-teal-100">
+                            <div class="text-[10px] text-teal-700 font-semibold">Debit Terkini</div>
+                            <div id="ipalLatestDebit" class="text-sm font-extrabold text-teal-800 mt-0.5">-</div>
+                        </div>
+                    </div>
+
+                    <!-- Ekspor Excel IPAL per Bulan -->
+                    <div class="mt-3 pt-3 border-t border-slate-100 flex items-center gap-2">
+                        <input type="month" id="exportMonthIpal" class="flex-1 text-xs rounded-xl border border-slate-200 px-2.5 py-2 bg-slate-50 focus:outline-none focus:border-teal-500">
+                        <button type="button" onclick="exportExcel('IPAL')" class="px-3 py-2 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-bold flex items-center gap-1.5 transition shrink-0">
+                            <i data-lucide="file-spreadsheet" class="w-3.5 h-3.5 pointer-events-none"></i>
+                            <span class="pointer-events-none">Ekspor</span>
+                        </button>
+                    </div>
+                </div>
+
+                <!-- Form Tambah Laporan IPAL -->
+                <div id="ipalFormCard" class="hidden bg-white rounded-2xl p-4 md:p-5 shadow-sm border border-teal-200">
+                    <div class="flex items-center justify-between mb-3">
+                        <h3 class="text-xs font-extrabold uppercase tracking-wider text-teal-800">Tambah Laporan IPAL</h3>
+                        <button type="button" onclick="toggleIpalForm(false)" class="text-xs text-slate-400 hover:text-slate-600 font-semibold">Tutup</button>
+                    </div>
+                    <form id="ipalForm" onsubmit="handleIpalSubmit(event)" class="space-y-3">
+                        <div class="grid grid-cols-1 md:grid-cols-2 gap-2.5">
+                            <div>
+                                <label class="block text-[11px] font-bold text-slate-700 mb-1">Tanggal &amp; Waktu</label>
+                                <input type="datetime-local" id="ipalTanggal" required class="w-full text-xs rounded-xl border border-slate-200 px-3 py-2 focus:outline-none focus:border-teal-500">
+                            </div>
+                            <div>
+                                <label class="block text-[11px] font-bold text-slate-700 mb-1">Petugas (Otomatis)</label>
+                                <input type="text" id="ipalPetugas" readonly class="w-full text-xs rounded-xl border border-slate-200 bg-slate-100 text-slate-600 font-semibold px-3 py-2">
+                            </div>
+                        </div>
+
+                        <div class="grid grid-cols-2 md:grid-cols-4 gap-2.5">
+                            <div>
+                                <label class="block text-[11px] font-bold text-slate-700 mb-1">pH</label>
+                                <input type="number" step="0.1" min="0" max="14" id="ipalPh" required placeholder="0.0" class="w-full text-xs rounded-xl border border-slate-200 px-3 py-2 focus:outline-none focus:border-teal-500">
+                            </div>
+                            <div>
+                                <label class="block text-[11px] font-bold text-slate-700 mb-1">COD (mg/L)</label>
+                                <input type="number" step="0.01" min="0" id="ipalCod" required placeholder="0" class="w-full text-xs rounded-xl border border-slate-200 px-3 py-2 focus:outline-none focus:border-teal-500">
+                            </div>
+                            <div>
+                                <label class="block text-[11px] font-bold text-slate-700 mb-1">BOD (mg/L)</label>
+                                <input type="number" step="0.01" min="0" id="ipalBod" required placeholder="0" class="w-full text-xs rounded-xl border border-slate-200 px-3 py-2 focus:outline-none focus:border-teal-500">
+                            </div>
+                            <div>
+                                <label class="block text-[11px] font-bold text-slate-700 mb-1">TOC (mg/L)</label>
+                                <input type="number" step="0.01" min="0" id="ipalToc" required placeholder="0" class="w-full text-xs rounded-xl border border-slate-200 px-3 py-2 focus:outline-none focus:border-teal-500">
+                            </div>
+                        </div>
+
+                        <div class="grid grid-cols-1 md:grid-cols-2 gap-2.5">
+                            <div>
+                                <label class="block text-[11px] font-bold text-slate-700 mb-1">Angka Meteran Outlet (m³)</label>
+                                <input type="number" step="0.01" min="0" id="ipalOutlet" required oninput="updateIpalDebitPreview()" placeholder="0.00" class="w-full text-xs rounded-xl border border-slate-200 px-3 py-2 focus:outline-none focus:border-teal-500">
+                            </div>
+                            <div>
+                                <label class="block text-[11px] font-bold text-slate-700 mb-1">Debit Otomatis (m³)</label>
+                                <input type="text" id="ipalDebitPreview" readonly value="0.00 m³" class="w-full text-xs rounded-xl border border-teal-200 bg-teal-50 text-teal-800 font-extrabold px-3 py-2">
+                            </div>
+                        </div>
+                        <div id="ipalPrevMeterInfo" class="text-[11px] text-slate-500 bg-slate-50 px-3 py-1.5 rounded-xl border border-slate-100">
+                            Meteran laporan sebelumnya: -
+                        </div>
+
+                        <div>
+                            <label class="block text-[11px] font-bold text-slate-700 mb-1">Foto Dokumentasi / Meteran IPAL</label>
+                            <input type="file" id="ipalFoto" accept="image/*" capture="environment" onchange="handlePhotoUpload(event, 'ipalFotoPreview', 'ipalFotoData')" class="w-full text-xs text-slate-600 file:mr-2 file:py-1.5 file:px-3 file:rounded-lg file:border-0 file:text-xs file:font-bold file:bg-teal-50 file:text-teal-700 hover:file:bg-teal-100">
+                            <input type="hidden" id="ipalFotoData">
+                            <img id="ipalFotoPreview" src="" alt="Preview Foto IPAL" class="hidden mt-2 w-full h-36 object-cover rounded-xl border border-slate-200">
+                        </div>
+
+                        <button type="submit" class="w-full py-2.5 rounded-xl bg-teal-600 hover:bg-teal-700 active:scale-[0.99] text-white text-xs font-bold shadow-sm transition">
+                            Simpan Laporan IPAL
+                        </button>
+                    </form>
+                </div>
+
+                <!-- Tabel Riwayat IPAL -->
+                <div class="bg-white rounded-2xl shadow-sm border border-slate-100 overflow-hidden">
+                    <div class="px-4 py-3 border-b border-slate-100 flex items-center justify-between">
+                        <h3 class="text-xs font-extrabold uppercase tracking-wider text-slate-600">Riwayat Laporan IPAL</h3>
+                    </div>
+                    <div class="overflow-x-auto">
+                        <table class="w-full text-left border-collapse">
+                            <thead class="bg-slate-50 text-[10px] font-bold uppercase text-slate-500 border-b border-slate-100">
+                                <tr>
+                                    <th class="px-2.5 py-2">Waktu</th>
+                                    <th class="px-2 py-2">pH</th>
+                                    <th class="px-2 py-2">COD</th>
+                                    <th class="px-2 py-2">BOD</th>
+                                    <th class="px-2 py-2">TOC</th>
+                                    <th class="px-2 py-2">Outlet</th>
+                                    <th class="px-2 py-2">Debit</th>
+                                    <th class="px-2 py-2">Petugas / Foto</th>
+                                    <th class="px-2 py-2 text-center">Aksi</th>
+                                </tr>
+                            </thead>
+                            <tbody id="ipalTableBody" class="divide-y divide-slate-100 text-xs text-slate-700"></tbody>
+                        </table>
+                    </div>
+                </div>
+            </section>
+
+            <!-- TAB 3: OPERASIONAL LIMBAH B3 -->
+            <section id="tab-b3" class="tab-content hidden space-y-4">
+                <!-- Switcher Halaman Kategori Limbah B3 -->
+                <div class="bg-white rounded-2xl p-2 shadow-sm border border-slate-100 grid grid-cols-2 gap-2">
+                    <button
+                        id="b3SubTabBtnInfeksius"
+                        type="button"
+                        onclick="switchB3CategoryTab('Infeksius')"
+                        class="py-2 px-3 rounded-xl text-xs font-extrabold flex items-center justify-center gap-1.5 transition bg-rose-600 text-white shadow-sm"
+                    >
+                        <i data-lucide="biohazard" class="w-3.5 h-3.5 pointer-events-none"></i>
+                        <span class="pointer-events-none">B3 Infeksius</span>
+                    </button>
+                    <button
+                        id="b3SubTabBtnNonInfeksius"
+                        type="button"
+                        onclick="switchB3CategoryTab('Non Infeksius')"
+                        class="py-2 px-3 rounded-xl text-xs font-extrabold flex items-center justify-center gap-1.5 transition bg-slate-100 text-slate-600 hover:bg-slate-200"
+                    >
+                        <i data-lucide="layers" class="w-3.5 h-3.5 pointer-events-none"></i>
+                        <span class="pointer-events-none">B3 Non Infeksius</span>
+                    </button>
+                </div>
+
+                <!-- HALAMAN 1: LIMBAH B3 INFEKSIUS -->
+                <div id="b3PageInfeksius" class="space-y-4">
+                    <div class="bg-white rounded-2xl p-4 md:p-5 shadow-sm border border-rose-200/80">
+                        <div class="flex items-center justify-between gap-2 mb-3">
+                            <div>
+                                <h2 class="text-sm md:text-base font-extrabold text-slate-800">Dashboard Limbah B3 Infeksius</h2>
+                                <p class="text-[11px] text-slate-500">Halaman khusus pencatatan &amp; rekap B3 Infeksius</p>
+                            </div>
+                            <button
+                                id="btnTambahB3Infeksius"
+                                type="button"
+                                onclick="toggleB3Form('Infeksius')"
+                                class="px-3 py-2 rounded-xl bg-rose-600 hover:bg-rose-700 active:scale-95 text-white text-xs font-bold flex items-center gap-1.5 shadow-sm transition shrink-0"
+                            >
+                                <i data-lucide="plus-circle" class="w-3.5 h-3.5 pointer-events-none"></i>
+                                <span class="pointer-events-none">Catat Infeksius</span>
+                            </button>
+                        </div>
+
+                        <div class="grid grid-cols-3 gap-2 text-center mb-3">
+                            <div class="p-2.5 rounded-xl bg-rose-50 border border-rose-100">
+                                <div class="text-[10px] font-semibold text-rose-700">Dihasilkan</div>
+                                <div id="b3InfDihasilkan" class="text-sm font-extrabold text-rose-800 mt-0.5">0.0 kg</div>
+                            </div>
+                            <div class="p-2.5 rounded-xl bg-amber-50 border border-amber-100">
+                                <div class="text-[10px] font-semibold text-amber-700">Keluar</div>
+                                <div id="b3InfKeluar" class="text-sm font-extrabold text-amber-800 mt-0.5">0.0 kg</div>
+                            </div>
+                            <div class="p-2.5 rounded-xl bg-teal-50 border border-teal-100">
+                                <div class="text-[10px] font-semibold text-teal-700">Sisa Saldo</div>
+                                <div id="b3InfSaldo" class="text-sm font-extrabold text-teal-800 mt-0.5">0.0 kg</div>
+                            </div>
+                        </div>
+
+                        <!-- Ekspor Excel B3 Infeksius per Bulan -->
+                        <div class="pt-3 border-t border-slate-100 flex items-center gap-2">
+                            <input type="month" id="exportMonthB3Infeksius" class="flex-1 text-xs rounded-xl border border-slate-200 px-2.5 py-2 bg-slate-50 focus:outline-none focus:border-teal-500">
+                            <button type="button" onclick="exportExcel('B3_INFEKSIUS')" class="px-3 py-2 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-bold flex items-center gap-1.5 transition shrink-0">
+                                <i data-lucide="file-spreadsheet" class="w-3.5 h-3.5 pointer-events-none"></i>
+                                <span class="pointer-events-none">Ekspor</span>
+                            </button>
+                        </div>
+                    </div>
+
+                    <!-- Form Khusus Limbah B3 Infeksius -->
+                    <div id="b3FormCardInfeksius" class="hidden bg-white rounded-2xl p-4 md:p-5 shadow-sm border border-rose-200">
+                        <div class="flex items-center justify-between mb-3">
+                            <h3 class="text-xs font-extrabold uppercase tracking-wider text-rose-800">Catat Limbah B3 Infeksius</h3>
+                            <button type="button" onclick="toggleB3Form('Infeksius', false)" class="text-xs text-slate-400 hover:text-slate-600 font-semibold">Tutup</button>
+                        </div>
+                        <form id="b3FormInfeksius" onsubmit="handleB3CategorySubmit(event, 'Infeksius')" class="space-y-3">
+                            <div class="grid grid-cols-2 md:grid-cols-4 gap-2.5">
+                                <div>
+                                    <label class="block text-[11px] font-bold text-slate-700 mb-1">Tanggal Masuk TPS</label>
+                                    <input type="date" id="b3InfTanggalMasuk" required class="w-full text-xs rounded-xl border border-slate-200 px-3 py-2 focus:outline-none focus:border-rose-500">
+                                </div>
+                                <div>
+                                    <label class="block text-[11px] font-bold text-slate-700 mb-1">Jam Masuk TPS</label>
+                                    <input type="time" id="b3InfJamMasuk" required class="w-full text-xs rounded-xl border border-slate-200 px-3 py-2 focus:outline-none focus:border-rose-500">
+                                </div>
+                                <div>
+                                    <label class="block text-[11px] font-bold text-slate-700 mb-1">Jenis Limbah Infeksius</label>
+                                    <select id="b3InfJenis" required class="w-full text-xs rounded-xl border border-slate-200 px-3 py-2 bg-white focus:outline-none focus:border-rose-500">
+                                        <option value="Infeksius - Padat">Infeksius - Padat</option>
+                                        <option value="Infeksius - Tajam">Infeksius - Tajam</option>
+                                        <option value="Infeksius - Cair">Infeksius - Cair</option>
+                                    </select>
+                                </div>
+                                <div>
+                                    <label class="block text-[11px] font-bold text-slate-700 mb-1">Berat Limbah (kg)</label>
+                                    <input type="number" step="0.1" min="0.1" id="b3InfBerat" required placeholder="0.0" class="w-full text-xs rounded-xl border border-slate-200 px-3 py-2 focus:outline-none focus:border-rose-500">
+                                </div>
+                            </div>
+
+                            <button type="submit" class="w-full py-2.5 rounded-xl bg-rose-600 hover:bg-rose-700 active:scale-[0.99] text-white text-xs font-bold shadow-sm transition">
+                                Simpan Limbah B3 Infeksius
+                            </button>
+                        </form>
+                    </div>
+
+                    <!-- Tabel Logbook Khusus Limbah B3 Infeksius -->
+                    <div class="bg-white rounded-2xl shadow-sm border border-rose-200/70 overflow-hidden">
+                        <div class="px-4 py-2.5 bg-rose-50/70 border-b border-rose-100 flex items-center justify-between">
+                            <h3 class="text-xs font-extrabold uppercase tracking-wider text-rose-800">Logbook B3 Infeksius</h3>
+                            <span id="b3BadgeInfeksius" class="text-[10px] font-bold px-2 py-0.5 rounded-full bg-rose-100 text-rose-800">0.0 kg</span>
+                        </div>
+                        <div class="overflow-x-auto">
+                            <table class="w-full text-left border-collapse">
+                                <thead class="bg-slate-50 text-[10px] font-bold uppercase text-slate-500 border-b border-slate-100">
+                                    <tr>
+                                        <th class="px-2.5 py-2">Tanggal &amp; Jam</th>
+                                        <th class="px-2 py-2">Jenis</th>
+                                        <th class="px-2 py-2">Berat</th>
+                                        <th class="px-2 py-2">Petugas</th>
+                                        <th class="px-2 py-2 text-center">Aksi</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="b3TableInfeksiusBody" class="divide-y divide-slate-100 text-xs text-slate-700"></tbody>
+                            </table>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- HALAMAN 2: LIMBAH B3 NON INFEKSIUS -->
+                <div id="b3PageNonInfeksius" class="hidden space-y-4">
+                    <div class="bg-white rounded-2xl p-4 md:p-5 shadow-sm border border-cyan-200/80">
+                        <div class="flex items-center justify-between gap-2 mb-3">
+                            <div>
+                                <h2 class="text-sm md:text-base font-extrabold text-slate-800">Dashboard Limbah B3 Non Infeksius</h2>
+                                <p class="text-[11px] text-slate-500">Halaman khusus pencatatan &amp; rekap B3 Non Infeksius</p>
+                            </div>
+                            <button
+                                id="btnTambahB3NonInfeksius"
+                                type="button"
+                                onclick="toggleB3Form('Non Infeksius')"
+                                class="px-3 py-2 rounded-xl bg-cyan-600 hover:bg-cyan-700 active:scale-95 text-white text-xs font-bold flex items-center gap-1.5 shadow-sm transition shrink-0"
+                            >
+                                <i data-lucide="plus-circle" class="w-3.5 h-3.5 pointer-events-none"></i>
+                                <span class="pointer-events-none">Catat Non Infeksius</span>
+                            </button>
+                        </div>
+
+                        <div class="grid grid-cols-3 gap-2 text-center mb-3">
+                            <div class="p-2.5 rounded-xl bg-cyan-50 border border-cyan-100">
+                                <div class="text-[10px] font-semibold text-cyan-700">Dihasilkan</div>
+                                <div id="b3NonInfDihasilkan" class="text-sm font-extrabold text-cyan-800 mt-0.5">0.0 kg</div>
+                            </div>
+                            <div class="p-2.5 rounded-xl bg-amber-50 border border-amber-100">
+                                <div class="text-[10px] font-semibold text-amber-700">Keluar</div>
+                                <div id="b3NonInfKeluar" class="text-sm font-extrabold text-amber-800 mt-0.5">0.0 kg</div>
+                            </div>
+                            <div class="p-2.5 rounded-xl bg-teal-50 border border-teal-100">
+                                <div class="text-[10px] font-semibold text-teal-700">Sisa Saldo</div>
+                                <div id="b3NonInfSaldo" class="text-sm font-extrabold text-teal-800 mt-0.5">0.0 kg</div>
+                            </div>
+                        </div>
+
+                        <!-- Ekspor Excel B3 Non Infeksius per Bulan -->
+                        <div class="pt-3 border-t border-slate-100 flex items-center gap-2">
+                            <input type="month" id="exportMonthB3NonInfeksius" class="flex-1 text-xs rounded-xl border border-slate-200 px-2.5 py-2 bg-slate-50 focus:outline-none focus:border-teal-500">
+                            <button type="button" onclick="exportExcel('B3_NON_INFEKSIUS')" class="px-3 py-2 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-bold flex items-center gap-1.5 transition shrink-0">
+                                <i data-lucide="file-spreadsheet" class="w-3.5 h-3.5 pointer-events-none"></i>
+                                <span class="pointer-events-none">Ekspor</span>
+                            </button>
+                        </div>
+                    </div>
+
+                    <!-- Form Khusus Limbah B3 Non Infeksius -->
+                    <div id="b3FormCardNonInfeksius" class="hidden bg-white rounded-2xl p-4 md:p-5 shadow-sm border border-cyan-200">
+                        <div class="flex items-center justify-between mb-3">
+                            <h3 class="text-xs font-extrabold uppercase tracking-wider text-cyan-800">Catat Limbah B3 Non Infeksius</h3>
+                            <button type="button" onclick="toggleB3Form('Non Infeksius', false)" class="text-xs text-slate-400 hover:text-slate-600 font-semibold">Tutup</button>
+                        </div>
+                        <form id="b3FormNonInfeksius" onsubmit="handleB3CategorySubmit(event, 'Non Infeksius')" class="space-y-3">
+                            <div class="grid grid-cols-2 md:grid-cols-4 gap-2.5">
+                                <div>
+                                    <label class="block text-[11px] font-bold text-slate-700 mb-1">Tanggal Masuk TPS</label>
+                                    <input type="date" id="b3NonInfTanggalMasuk" required class="w-full text-xs rounded-xl border border-slate-200 px-3 py-2 focus:outline-none focus:border-cyan-500">
+                                </div>
+                                <div>
+                                    <label class="block text-[11px] font-bold text-slate-700 mb-1">Jam Masuk TPS</label>
+                                    <input type="time" id="b3NonInfJamMasuk" required class="w-full text-xs rounded-xl border border-slate-200 px-3 py-2 focus:outline-none focus:border-cyan-500">
+                                </div>
+                                <div>
+                                    <label class="block text-[11px] font-bold text-slate-700 mb-1">Jenis Limbah Non Infeksius</label>
+                                    <select id="b3NonInfJenis" required class="w-full text-xs rounded-xl border border-slate-200 px-3 py-2 bg-white focus:outline-none focus:border-cyan-500">
+                                        <option value="Non Infeksius - Padat">Non Infeksius - Padat</option>
+                                        <option value="Non Infeksius - Cair">Non Infeksius - Cair</option>
+                                        <option value="Non Infeksius - Tajam/Lampu">Non Infeksius - Tajam/Lampu</option>
+                                    </select>
+                                </div>
+                                <div>
+                                    <label class="block text-[11px] font-bold text-slate-700 mb-1">Berat Limbah (kg)</label>
+                                    <input type="number" step="0.1" min="0.1" id="b3NonInfBerat" required placeholder="0.0" class="w-full text-xs rounded-xl border border-slate-200 px-3 py-2 focus:outline-none focus:border-cyan-500">
+                                </div>
+                            </div>
+
+                            <button type="submit" class="w-full py-2.5 rounded-xl bg-cyan-600 hover:bg-cyan-700 active:scale-[0.99] text-white text-xs font-bold shadow-sm transition">
+                                Simpan Limbah B3 Non Infeksius
+                            </button>
+                        </form>
+                    </div>
+
+                    <!-- Tabel Logbook Khusus Limbah B3 Non Infeksius -->
+                    <div class="bg-white rounded-2xl shadow-sm border border-cyan-200/70 overflow-hidden">
+                        <div class="px-4 py-2.5 bg-cyan-50/70 border-b border-cyan-100 flex items-center justify-between">
+                            <h3 class="text-xs font-extrabold uppercase tracking-wider text-cyan-800">Logbook B3 Non Infeksius</h3>
+                            <span id="b3BadgeNonInfeksius" class="text-[10px] font-bold px-2 py-0.5 rounded-full bg-cyan-100 text-cyan-800">0.0 kg</span>
+                        </div>
+                        <div class="overflow-x-auto">
+                            <table class="w-full text-left border-collapse">
+                                <thead class="bg-slate-50 text-[10px] font-bold uppercase text-slate-500 border-b border-slate-100">
+                                    <tr>
+                                        <th class="px-2.5 py-2">Tanggal &amp; Jam</th>
+                                        <th class="px-2 py-2">Jenis</th>
+                                        <th class="px-2 py-2">Berat</th>
+                                        <th class="px-2 py-2">Petugas</th>
+                                        <th class="px-2 py-2 text-center">Aksi</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="b3TableNonInfeksiusBody" class="divide-y divide-slate-100 text-xs text-slate-700"></tbody>
+                            </table>
+                        </div>
+                    </div>
+                </div>
+            </section>
+
+            <!-- TAB 4: SUMUR BOR -->
+            <section id="tab-sumurbor" class="tab-content hidden space-y-4">
+                <!-- Switcher Halaman Sumur Bor 1 & Sumur Bor 2 -->
+                <div class="bg-white rounded-2xl p-2 shadow-sm border border-slate-100 grid grid-cols-2 gap-2">
+                    <button
+                        id="sbSubTabBtn1"
+                        type="button"
+                        onclick="switchSumurBorTab('Sumur Bor 1 (Utama)')"
+                        class="py-2 px-3 rounded-xl text-xs font-extrabold flex items-center justify-center gap-1.5 transition bg-indigo-600 text-white shadow-sm"
+                    >
+                        <i data-lucide="gauge" class="w-3.5 h-3.5 pointer-events-none"></i>
+                        <span class="pointer-events-none">Sumur Bor 1</span>
+                    </button>
+                    <button
+                        id="sbSubTabBtn2"
+                        type="button"
+                        onclick="switchSumurBorTab('Sumur Bor 2 (Instalasi)')"
+                        class="py-2 px-3 rounded-xl text-xs font-extrabold flex items-center justify-center gap-1.5 transition bg-slate-100 text-slate-600 hover:bg-slate-200"
+                    >
+                        <i data-lucide="droplet" class="w-3.5 h-3.5 pointer-events-none"></i>
+                        <span class="pointer-events-none">Sumur Bor 2</span>
+                    </button>
+                </div>
+
+                <!-- HALAMAN 1: SUMUR BOR 1 (UTAMA) -->
+                <div id="sbPage1" class="space-y-4">
+                    <div class="bg-white rounded-2xl p-4 md:p-5 shadow-sm border border-indigo-200/80">
+                        <div class="flex items-center justify-between mb-3">
+                            <div>
+                                <h2 class="text-sm md:text-base font-extrabold text-slate-800">Dashboard Sumur Bor 1 (Utama)</h2>
+                                <p class="text-[11px] text-slate-500">Pemantauan angka meteran &amp; debit air Sumur Bor 1 (m³)</p>
+                            </div>
+                            <span class="px-2.5 py-1 rounded-full text-[10px] font-bold bg-indigo-50 text-indigo-700 border border-indigo-100">SB-01</span>
+                        </div>
+
+                        <div class="grid grid-cols-2 gap-2.5 text-center">
+                            <div class="p-2.5 rounded-xl bg-indigo-50 border border-indigo-100">
+                                <div class="text-[10px] font-semibold text-indigo-700">Total Debit SB 1</div>
+                                <div id="sb1TotalPemakaian" class="text-base font-extrabold text-indigo-800 mt-0.5">0.00 m³</div>
+                            </div>
+                            <div class="p-2.5 rounded-xl bg-teal-50 border border-teal-100">
+                                <div class="text-[10px] font-semibold text-teal-700">Meteran Terakhir SB 1</div>
+                                <div id="sb1LatestMeter" class="text-base font-extrabold text-teal-800 mt-0.5">-</div>
+                            </div>
+                        </div>
+
+                        <!-- Ekspor Excel Sumur Bor 1 per Bulan -->
+                        <div class="mt-3 pt-3 border-t border-slate-100 flex items-center gap-2">
+                            <input type="month" id="exportMonthSumurBor1" class="flex-1 text-xs rounded-xl border border-slate-200 px-2.5 py-2 bg-slate-50 focus:outline-none focus:border-teal-500">
+                            <button type="button" onclick="exportExcel('SB1')" class="px-3 py-2 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-bold flex items-center gap-1.5 transition shrink-0">
+                                <i data-lucide="file-spreadsheet" class="w-3.5 h-3.5 pointer-events-none"></i>
+                                <span class="pointer-events-none">Ekspor</span>
+                            </button>
+                        </div>
+                    </div>
+
+                    <!-- Form Sumur Bor 1 -->
+                    <div class="bg-white rounded-2xl p-4 md:p-5 shadow-sm border border-slate-100">
+                        <h3 class="text-xs font-extrabold uppercase tracking-wider text-indigo-800 mb-3">Pelaporan Sumur Bor 1</h3>
+                        <form id="sumurBorForm1" onsubmit="handleSumurBorSubmit(event, 'Sumur Bor 1 (Utama)')" class="space-y-3">
+                            <div class="grid grid-cols-1 md:grid-cols-2 gap-2.5">
+                                <div>
+                                    <label class="block text-[11px] font-bold text-slate-700 mb-1">Angka Meteran (m³)</label>
+                                    <input type="number" step="0.01" min="0" id="sb1Meteran" required oninput="updateSumurBorPreview('1')" placeholder="0.00" class="w-full text-xs rounded-xl border border-slate-200 px-3 py-2 focus:outline-none focus:border-indigo-500">
+                                </div>
+                                <div>
+                                    <label class="block text-[11px] font-bold text-slate-700 mb-1">Debit Otomatis (m³)</label>
+                                    <input type="text" id="sb1DebitPreview" readonly value="0.00 m³" class="w-full text-xs rounded-xl border border-indigo-200 bg-indigo-50 text-indigo-900 font-extrabold px-3 py-2">
+                                </div>
+                            </div>
+
+                            <div id="sb1PrevMeterInfo" class="text-[11px] text-slate-500 bg-slate-50 px-3 py-1.5 rounded-xl border border-slate-100">
+                                Angka meteran laporan terakhir: belum ada (0.00 m³)
+                            </div>
+
+                            <div>
+                                <label class="block text-[11px] font-bold text-slate-700 mb-1">Foto Meteran SB 1</label>
+                                <input type="file" id="sb1Foto" accept="image/*" capture="environment" required onchange="handlePhotoUpload(event, 'sb1FotoPreview', 'sb1FotoData')" class="w-full text-xs text-slate-600 file:mr-2 file:py-1.5 file:px-3 file:rounded-lg file:border-0 file:text-xs file:font-bold file:bg-indigo-50 file:text-indigo-700 hover:file:bg-indigo-100">
+                                <input type="hidden" id="sb1FotoData">
+                                <img id="sb1FotoPreview" src="" alt="Preview Foto Meteran SB 1" class="hidden mt-2 w-full h-36 object-cover rounded-xl border border-slate-200">
+                            </div>
+
+                            <button type="submit" class="w-full py-2.5 rounded-xl bg-indigo-600 hover:bg-indigo-700 active:scale-[0.99] text-white text-xs font-bold shadow-sm transition">
+                                Simpan Pelaporan Sumur Bor 1
+                            </button>
+                        </form>
+                    </div>
+
+                    <!-- Tabel Riwayat Sumur Bor 1 -->
+                    <div class="bg-white rounded-2xl shadow-sm border border-indigo-200/70 overflow-hidden">
+                        <div class="px-4 py-3 bg-indigo-50/70 border-b border-indigo-100">
+                            <h3 class="text-xs font-extrabold uppercase tracking-wider text-indigo-800">Riwayat Pelaporan Sumur Bor 1</h3>
+                        </div>
+                        <div class="overflow-x-auto">
+                            <table class="w-full text-left border-collapse">
+                                <thead class="bg-slate-50 text-[10px] font-bold uppercase text-slate-500 border-b border-slate-100">
+                                    <tr>
+                                        <th class="px-2.5 py-2">Tanggal</th>
+                                        <th class="px-2 py-2">Angka Meteran</th>
+                                        <th class="px-2 py-2">Debit (m³)</th>
+                                        <th class="px-2 py-2">Foto / Petugas</th>
+                                        <th class="px-2 py-2 text-center">Aksi</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="sb1TableBody" class="divide-y divide-slate-100 text-xs text-slate-700"></tbody>
+                            </table>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- HALAMAN 2: SUMUR BOR 2 (INSTALASI) -->
+                <div id="sbPage2" class="hidden space-y-4">
+                    <div class="bg-white rounded-2xl p-4 md:p-5 shadow-sm border border-teal-200/80">
+                        <div class="flex items-center justify-between mb-3">
+                            <div>
+                                <h2 class="text-sm md:text-base font-extrabold text-slate-800">Dashboard Sumur Bor 2 (Instalasi)</h2>
+                                <p class="text-[11px] text-slate-500">Pemantauan angka meteran &amp; debit air Sumur Bor 2 (m³)</p>
+                            </div>
+                            <span class="px-2.5 py-1 rounded-full text-[10px] font-bold bg-teal-50 text-teal-700 border border-teal-100">SB-02</span>
+                        </div>
+
+                        <div class="grid grid-cols-2 gap-2.5 text-center">
+                            <div class="p-2.5 rounded-xl bg-teal-50 border border-teal-100">
+                                <div class="text-[10px] font-semibold text-teal-700">Total Debit SB 2</div>
+                                <div id="sb2TotalPemakaian" class="text-base font-extrabold text-teal-800 mt-0.5">0.00 m³</div>
+                            </div>
+                            <div class="p-2.5 rounded-xl bg-indigo-50 border border-indigo-100">
+                                <div class="text-[10px] font-semibold text-indigo-700">Meteran Terakhir SB 2</div>
+                                <div id="sb2LatestMeter" class="text-base font-extrabold text-indigo-800 mt-0.5">-</div>
+                            </div>
+                        </div>
+
+                        <!-- Ekspor Excel Sumur Bor 2 per Bulan -->
+                        <div class="mt-3 pt-3 border-t border-slate-100 flex items-center gap-2">
+                            <input type="month" id="exportMonthSumurBor2" class="flex-1 text-xs rounded-xl border border-slate-200 px-2.5 py-2 bg-slate-50 focus:outline-none focus:border-teal-500">
+                            <button type="button" onclick="exportExcel('SB2')" class="px-3 py-2 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-bold flex items-center gap-1.5 transition shrink-0">
+                                <i data-lucide="file-spreadsheet" class="w-3.5 h-3.5 pointer-events-none"></i>
+                                <span class="pointer-events-none">Ekspor</span>
+                            </button>
+                        </div>
+                    </div>
+
+                    <!-- Form Sumur Bor 2 -->
+                    <div class="bg-white rounded-2xl p-4 md:p-5 shadow-sm border border-slate-100">
+                        <h3 class="text-xs font-extrabold uppercase tracking-wider text-teal-800 mb-3">Pelaporan Sumur Bor 2</h3>
+                        <form id="sumurBorForm2" onsubmit="handleSumurBorSubmit(event, 'Sumur Bor 2 (Instalasi)')" class="space-y-3">
+                            <div class="grid grid-cols-1 md:grid-cols-2 gap-2.5">
+                                <div>
+                                    <label class="block text-[11px] font-bold text-slate-700 mb-1">Angka Meteran (m³)</label>
+                                    <input type="number" step="0.01" min="0" id="sb2Meteran" required oninput="updateSumurBorPreview('2')" placeholder="0.00" class="w-full text-xs rounded-xl border border-slate-200 px-3 py-2 focus:outline-none focus:border-teal-500">
+                                </div>
+                                <div>
+                                    <label class="block text-[11px] font-bold text-slate-700 mb-1">Debit Otomatis (m³)</label>
+                                    <input type="text" id="sb2DebitPreview" readonly value="0.00 m³" class="w-full text-xs rounded-xl border border-teal-200 bg-teal-50 text-teal-900 font-extrabold px-3 py-2">
+                                </div>
+                            </div>
+
+                            <div id="sb2PrevMeterInfo" class="text-[11px] text-slate-500 bg-slate-50 px-3 py-1.5 rounded-xl border border-slate-100">
+                                Angka meteran laporan terakhir: belum ada (0.00 m³)
+                            </div>
+
+                            <div>
+                                <label class="block text-[11px] font-bold text-slate-700 mb-1">Foto Meteran SB 2</label>
+                                <input type="file" id="sb2Foto" accept="image/*" capture="environment" required onchange="handlePhotoUpload(event, 'sb2FotoPreview', 'sb2FotoData')" class="w-full text-xs text-slate-600 file:mr-2 file:py-1.5 file:px-3 file:rounded-lg file:border-0 file:text-xs file:font-bold file:bg-teal-50 file:text-teal-700 hover:file:bg-teal-100">
+                                <input type="hidden" id="sb2FotoData">
+                                <img id="sb2FotoPreview" src="" alt="Preview Foto Meteran SB 2" class="hidden mt-2 w-full h-36 object-cover rounded-xl border border-slate-200">
+                            </div>
+
+                            <button type="submit" class="w-full py-2.5 rounded-xl bg-teal-600 hover:bg-teal-700 active:scale-[0.99] text-white text-xs font-bold shadow-sm transition">
+                                Simpan Pelaporan Sumur Bor 2
+                            </button>
+                        </form>
+                    </div>
+
+                    <!-- Tabel Riwayat Sumur Bor 2 -->
+                    <div class="bg-white rounded-2xl shadow-sm border border-teal-200/70 overflow-hidden">
+                        <div class="px-4 py-3 bg-teal-50/70 border-b border-teal-100">
+                            <h3 class="text-xs font-extrabold uppercase tracking-wider text-teal-800">Riwayat Pelaporan Sumur Bor 2</h3>
+                        </div>
+                        <div class="overflow-x-auto">
+                            <table class="w-full text-left border-collapse">
+                                <thead class="bg-slate-50 text-[10px] font-bold uppercase text-slate-500 border-b border-slate-100">
+                                    <tr>
+                                        <th class="px-2.5 py-2">Tanggal</th>
+                                        <th class="px-2 py-2">Angka Meteran</th>
+                                        <th class="px-2 py-2">Debit (m³)</th>
+                                        <th class="px-2 py-2">Foto / Petugas</th>
+                                        <th class="px-2 py-2 text-center">Aksi</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="sb2TableBody" class="divide-y divide-slate-100 text-xs text-slate-700"></tbody>
+                            </table>
+                        </div>
+                    </div>
+                </div>
+            </section>
+        </main>
+
+        <!-- Modal Notifikasi Realtime -->
+        <div id="notificationsModal" class="hidden fixed inset-0 bg-slate-900/60 backdrop-blur-xs z-50 flex items-center justify-center p-4" onclick="closeNotificationsModal()">
+            <div class="bg-white rounded-2xl w-full max-w-sm max-h-[85vh] flex flex-col overflow-hidden shadow-2xl" onclick="event.stopPropagation()">
+                <div class="px-4 py-3 border-b border-slate-100 flex items-center justify-between gap-2">
+                    <div>
+                        <h3 class="text-sm font-extrabold text-slate-800">Notifikasi Realtime</h3>
+                        <p class="text-[10px] text-slate-500">Aktivitas pelaporan &amp; perubahan status antar petugas</p>
+                    </div>
+                    <div class="flex items-center gap-1">
+                        <button type="button" onclick="markAllNotificationsRead()" class="px-2 py-1 rounded-lg bg-teal-50 hover:bg-teal-100 text-teal-700 text-[10px] font-bold">
+                            Tandai Dibaca
+                        </button>
+                        <button type="button" onclick="closeNotificationsModal()" class="text-slate-400 hover:text-slate-600 p-1 rounded-lg">
+                            <i data-lucide="x" class="w-4 h-4 pointer-events-none"></i>
+                        </button>
+                    </div>
+                </div>
+                <div id="notificationsList" class="p-3 space-y-2 overflow-y-auto flex-1"></div>
+            </div>
+        </div>
+
+        <!-- Modal Pengaturan -->
+        <div id="settingsModal" class="hidden fixed inset-0 bg-slate-900/60 backdrop-blur-xs z-50 flex items-center justify-center p-4" onclick="closeSettingsModal()">
+            <div class="bg-white rounded-2xl w-full max-w-sm max-h-[88vh] overflow-y-auto p-4 shadow-xl space-y-3" onclick="event.stopPropagation()">
+                <div class="flex items-center justify-between pb-2 border-b border-slate-100">
+                    <div>
+                        <h3 class="text-sm font-extrabold text-slate-800">Pengaturan</h3>
+                        <p class="text-[11px] text-slate-500">Kelola akun petugas, Google Spreadsheet &amp; koneksi cloud</p>
+                    </div>
+                    <button type="button" onclick="closeSettingsModal()" class="text-slate-400 hover:text-slate-600 p-1 rounded-lg">
+                        <i data-lucide="x" class="w-4 h-4 pointer-events-none"></i>
+                    </button>
+                </div>
+
+                <div class="p-3 rounded-xl bg-slate-50 border border-slate-100">
+                    <div class="text-[10px] font-bold uppercase tracking-wider text-slate-400">Petugas Aktif Saat Ini</div>
+                    <div id="settingsActivePetugas" class="text-xs font-extrabold text-slate-800 mt-0.5">Petugas Kesling</div>
+                </div>
+
+                <!-- Integrasi Google Spreadsheet (Google Apps Script Web App) -->
+                <div id="googleSheetSection" class="p-3 rounded-xl bg-emerald-50/60 border border-emerald-200/80 space-y-2">
+                    <div class="flex items-center justify-between">
+                        <span class="text-[11px] font-extrabold uppercase tracking-wider text-emerald-900">Google Spreadsheet</span>
+                        <span id="sheetConfigStatusTag" class="text-[9px] font-bold px-2 py-0.5 rounded-full bg-slate-200 text-slate-700">Belum Terhubung</span>
+                    </div>
+                    <p class="text-[10px] text-slate-600">Tempelkan URL Web App Google Apps Script dari Google Spreadsheet Anda agar setiap laporan otomatis masuk ke sheet.</p>
+                    <form onsubmit="saveGoogleSheetConfig(event)" class="space-y-2">
+                        <div>
+                            <label class="block text-[10px] font-bold text-slate-700 mb-0.5">URL Google Apps Script Web App</label>
+                            <input type="url" id="sheetWebAppUrl" placeholder="https://script.google.com/macros/s/.../exec" class="w-full text-[11px] rounded-xl border border-slate-200 bg-white px-2.5 py-1.5 focus:outline-none focus:border-emerald-500">
+                        </div>
+                        <div class="flex items-center justify-between gap-2 pt-0.5">
+                            <label class="inline-flex items-center gap-1.5 text-[10px] font-bold text-slate-700 cursor-pointer">
+                                <input type="checkbox" id="sheetIncludePhoto" class="rounded border-slate-300 text-emerald-600 focus:ring-emerald-500">
+                                <span>Sertakan foto</span>
+                            </label>
+                            <button type="button" onclick="testGoogleSheetConnection()" class="px-2 py-1 rounded-lg bg-white hover:bg-emerald-100 text-emerald-800 border border-emerald-200 text-[10px] font-bold transition">
+                                Tes Kirim
+                            </button>
+                        </div>
+                        <div class="flex gap-1.5">
+                            <button type="submit" class="flex-1 py-1.5 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white text-[11px] font-bold transition">
+                                Simpan Spreadsheet
+                            </button>
+                            <button type="button" onclick="clearGoogleSheetConfig()" class="px-2.5 py-1.5 rounded-xl bg-slate-200 hover:bg-slate-300 text-slate-700 text-[11px] font-bold transition">
+                                Lepas
+                            </button>
+                        </div>
+                    </form>
+                </div>
+
+                <!-- Pengaturan Koneksi Internet Realtime (Firebase) -->
+                <div id="adminCloudRealtimeSection" class="p-3 rounded-xl bg-teal-50/50 border border-teal-200/80 space-y-2">
+                    <div class="flex items-center justify-between">
+                        <span class="text-[11px] font-extrabold uppercase tracking-wider text-teal-900">Koneksi Realtime Cloud</span>
+                        <span id="cloudConfigStatusTag" class="text-[9px] font-bold px-2 py-0.5 rounded-full bg-slate-200 text-slate-700">Lokal</span>
+                    </div>
+                    <p class="text-[10px] text-slate-600">Atur atau ganti Firebase Realtime Database agar laporan &amp; notifikasi tersinkronisasi antar perangkat.</p>
+                    <form onsubmit="saveCloudConfig(event)" class="space-y-2">
+                        <div>
+                            <label class="block text-[10px] font-bold text-slate-700 mb-0.5">Database URL</label>
+                            <input type="url" id="cloudDatabaseUrl" placeholder="https://nama-proyek-default-rtdb.firebaseio.com" class="w-full text-[11px] rounded-xl border border-slate-200 bg-white px-2.5 py-1.5 focus:outline-none focus:border-teal-500">
+                        </div>
+                        <div>
+                            <label class="block text-[10px] font-bold text-slate-700 mb-0.5">API Key (Opsional)</label>
+                            <input type="text" id="cloudApiKey" placeholder="AIzaSy..." class="w-full text-[11px] rounded-xl border border-slate-200 bg-white px-2.5 py-1.5 focus:outline-none focus:border-teal-500">
+                        </div>
+                        <div class="flex gap-1.5">
+                            <button type="submit" class="flex-1 py-1.5 rounded-xl bg-teal-600 hover:bg-teal-700 text-white text-[11px] font-bold transition">
+                                Simpan &amp; Hubungkan
+                            </button>
+                            <button type="button" onclick="disconnectCloudConfig()" class="px-2.5 py-1.5 rounded-xl bg-slate-200 hover:bg-slate-300 text-slate-700 text-[11px] font-bold transition">
+                                Mode Lokal
+                            </button>
+                        </div>
+                    </form>
+                </div>
+
+                <div class="space-y-2">
+                    <button
+                        type="button"
+                        onclick="openAccountFromSettings()"
+                        class="w-full px-3.5 py-2.5 rounded-xl bg-slate-50 hover:bg-teal-50 text-slate-800 border border-slate-200 text-xs font-bold flex items-center justify-between transition"
+                    >
+                        <span class="flex items-center gap-2 pointer-events-none">
+                            <i data-lucide="user-cog" class="w-4 h-4 text-teal-700"></i>
+                            <span>Pengaturan Petugas</span>
+                        </span>
+                        <i data-lucide="chevron-right" class="w-4 h-4 text-slate-400 pointer-events-none"></i>
+                    </button>
+                </div>
+            </div>
+        </div>
+
+        <!-- Modal Akun Petugas -->
+        <div id="petugasModal" class="hidden fixed inset-0 bg-slate-900/60 backdrop-blur-xs z-50 flex items-center justify-center p-4" onclick="closePetugasModal()">
+            <div class="bg-white rounded-2xl w-full max-w-sm max-h-[88vh] overflow-y-auto p-4 shadow-xl space-y-4" onclick="event.stopPropagation()">
+                <div class="flex items-center justify-between pb-2 border-b border-slate-100">
+                    <div>
+                        <h3 class="text-sm font-extrabold text-slate-800">Pengaturan Petugas</h3>
+                        <p class="text-[11px] text-slate-500">Atur nama petugas pelapor aktif &amp; daftar petugas</p>
+                    </div>
+                    <button type="button" onclick="closePetugasModal()" class="text-slate-400 hover:text-slate-600 p-1 rounded-lg">
+                        <i data-lucide="x" class="w-4 h-4 pointer-events-none"></i>
+                    </button>
+                </div>
+
+                <!-- Form Tambah / Pakai Nama Petugas -->
+                <form onsubmit="savePetugasAccount(event)" class="space-y-2.5">
+                    <div class="text-[11px] font-extrabold uppercase tracking-wider text-teal-800">Setel / Tambah Petugas</div>
+                    <div>
+                        <label class="block text-[11px] font-bold text-slate-700 mb-1">Nama Petugas</label>
+                        <input type="text" id="inputPetugasNama" required placeholder="Nama lengkap petugas" class="w-full text-xs rounded-xl border border-slate-200 px-3 py-2 focus:outline-none focus:border-teal-500">
+                    </div>
+                    <div class="flex gap-2 pt-1">
+                        <button type="button" onclick="closePetugasModal()" class="flex-1 py-2 rounded-xl bg-slate-100 text-slate-700 text-xs font-bold">Tutup</button>
+                        <button type="submit" class="flex-1 py-2 rounded-xl bg-teal-600 text-white text-xs font-bold">Simpan &amp; Aktifkan</button>
+                    </div>
+                </form>
+
+                <!-- Daftar Petugas Tersimpan -->
+                <div class="pt-3 border-t border-slate-100 space-y-2">
+                    <div class="flex items-center justify-between">
+                        <h4 class="text-[11px] font-extrabold uppercase tracking-wider text-slate-700">Daftar Petugas</h4>
+                        <span id="accessAccountCount" class="text-[10px] font-bold px-2 py-0.5 rounded-full bg-teal-50 text-teal-700">0 petugas</span>
+                    </div>
+                    <div id="accessAccountsList" class="space-y-2 max-h-48 overflow-y-auto pr-0.5"></div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Modal Pratinjau Foto -->
+        <div id="photoModal" class="hidden fixed inset-0 bg-slate-900/80 z-50 flex items-center justify-center p-4" onclick="closePhotoModal()">
+            <div class="bg-white rounded-2xl max-w-sm w-full overflow-hidden shadow-2xl" onclick="event.stopPropagation()">
+                <div class="px-4 py-2.5 border-b border-slate-100 flex items-center justify-between">
+                    <span id="photoModalTitle" class="text-xs font-bold text-slate-800 truncate">Dokumentasi</span>
+                    <button type="button" onclick="closePhotoModal()" class="text-slate-400 hover:text-slate-600">
+                        <i data-lucide="x" class="w-4 h-4"></i>
+                    </button>
+                </div>
+                <div class="p-3 bg-slate-950 flex items-center justify-center">
+                    <img id="photoModalImg" src="" alt="Dokumentasi" class="max-h-80 w-full object-contain rounded-xl">
+                </div>
+            </div>
+        </div>
+
+        <!-- Toast Notifikasi -->
+        <div id="toastBanner" class="hidden fixed bottom-20 left-1/2 -translate-x-1/2 bg-slate-900 text-white text-xs font-semibold px-4 py-2.5 rounded-full shadow-lg z-50 max-w-xs text-center"></div>
+    </div>
+
+    <script>
+        /* =====================================================================
+           KONFIGURASI & KUNCI PENYIMPANAN LOKAL
+           ===================================================================== */
+        const STORAGE_KEYS = {
+            SAN: 'kesling_track_sanitasi_v1',
+            IPAL: 'kesling_track_ipal_v1',
+            B3: 'kesling_track_b3_v1',
+            SB: 'kesling_track_sumurbor_v1',
+            PETUGAS: 'kesling_track_petugas_v1',
+            ACCOUNTS: 'kesling_track_accounts_v1',
+            SESSION: 'kesling_track_session_v1',
+            NOTIF: 'kesling_track_notifs_v1',
+            NOTIF_READ: 'kesling_track_notif_read_v1',
+            CLOUD_CFG: 'kesling_track_cloud_cfg_v1',
+            SHEET_CFG: 'kesling_track_sheet_cfg_v1'
+        };
+
+        const ADMIN_EMAIL = 'asepfatu58@gmail.com';
+        const ADMIN_DEFAULT_PASSWORD = '1234';
+
+        const DEFAULT_CLOUD_CONFIG = {
+            databaseURL: '',
+            apiKey: ''
+        };
+
+        const DEFAULT_SHEET_CONFIG = {
+            webAppUrl: '',
+            includePhoto: false
+        };
+
+        const DEFAULT_ACCOUNTS = [
+            {
+                id: 101,
+                nama: 'Petugas Kesling',
+                email: 'petugas@kesling.local',
+                password: '',
+                role: 'Petugas Kesling',
+                active: true
+            },
+            {
+                id: 102,
+                nama: 'Petugas Kesling Pagi',
+                email: 'petugas.pagi@kesling.local',
+                password: '',
+                role: 'Petugas Kesling',
+                active: true
+            },
+            {
+                id: 103,
+                nama: 'Petugas Sanitasi & IPAL',
+                email: 'sanitasi.ipal@kesling.local',
+                password: '',
+                role: 'Petugas Kesling',
+                active: true
+            },
+            {
+                id: 104,
+                nama: 'Petugas Limbah B3',
+                email: 'limbah.b3@kesling.local',
+                password: '',
+                role: 'Petugas Kesling',
+                active: true
+            }
+        ];
+
+        const B3_GROUP_MAP = {
+            'Infeksius': 'Infeksius',
+            'Non Infeksius': 'Non Infeksius',
+            'Infeksius - Padat': 'Infeksius',
+            'Infeksius - Tajam': 'Infeksius',
+            'Infeksius - Cair': 'Infeksius',
+            'Non Infeksius - Padat': 'Non Infeksius',
+            'Non Infeksius - Cair': 'Non Infeksius',
+            'Non Infeksius - Tajam/Lampu': 'Non Infeksius',
+            'Padat': 'Infeksius',
+            'Tajam': 'Infeksius',
+            'Cair': 'Non Infeksius'
+        };
+
+        /* =====================================================================
+           STATE APLIKASI
+           ===================================================================== */
+        let currentTab = 'home';
+        let currentB3Category = 'Infeksius';
+        let currentSumurBorTitik = 'Sumur Bor 1 (Utama)';
+        let sanitasiData = [];
+        let ipalData = [];
+        let b3Data = [];
+        let sumurBorData = [];
+        let notificationsData = [];
+        let lastReadNotifId = 0;
+        let knownNotifIds = new Set();
+        let isFirstCloudNotifSnapshot = true;
+        let cloudConfig = { databaseURL: '', apiKey: '' };
+        let sheetConfig = { webAppUrl: '', includePhoto: false };
+        let rtdbInstance = null;
+        let isCloudConnected = false;
+        let isApplyingCloudSync = false;
+
+        let petugasAccount = { nama: 'Petugas Kesling', email: '', role: 'Petugas Kesling' };
+        let accessAccounts = [];
+        let isAdminMode = false;
+        let isLoggedIn = true;
+        let toastTimer = null;
+
+        /* =====================================================================
+           UTILITAS PENYIMPANAN, FORMAT & UI
+           ===================================================================== */
+        function loadStorage(key, fallback) {
+            try {
+                const raw = localStorage.getItem(key);
+                if (!raw) return fallback;
+                const parsed = JSON.parse(raw);
+                return parsed !== null && parsed !== undefined ? parsed : fallback;
+            } catch (err) {
+                console.warn('Gagal membaca storage:', key, err);
+                return fallback;
+            }
+        }
+
+        function saveStorage(key, value) {
+            try {
+                localStorage.setItem(key, JSON.stringify(value));
+            } catch (err) {
+                console.warn('Gagal menyimpan storage:', key, err);
+                showToast('Penyimpanan penuh atau tidak tersedia.');
+            }
+        }
+
+        function refreshIcons() {
+            try {
+                if (window.lucide && typeof window.lucide.createIcons === 'function') {
+                    window.lucide.createIcons();
+                }
+            } catch (err) {
+                console.warn('Gagal memuat ikon Lucide:', err);
+            }
+        }
+
+        function showToast(message) {
+            const banner = document.getElementById('toastBanner');
+            if (!banner) return;
+            banner.textContent = message || 'Notifikasi';
+            banner.classList.remove('hidden');
+            if (toastTimer) clearTimeout(toastTimer);
+            toastTimer = setTimeout(() => {
+                banner.classList.add('hidden');
+            }, 2800);
+        }
+
+        function escapeHtml(value) {
+            return String(value ?? '')
+                .replace(/&/g, '&amp;')
+                .replace(/</g, '&lt;')
+                .replace(/>/g, '&gt;')
+                .replace(/"/g, '&quot;')
+                .replace(/'/g, '&#39;');
+        }
+
+        function formatDateTime(dateStr) {
+            if (!dateStr) return '-';
+            const dt = new Date(dateStr);
+            if (isNaN(dt.getTime())) return String(dateStr);
+            return dt.toLocaleString('id-ID', {
+                day: '2-digit',
+                month: 'short',
+                year: 'numeric',
+                hour: '2-digit',
+                minute: '2-digit'
+            });
+        }
+
+        function toLocalDateTimeInput(dateObj) {
+            const d = dateObj instanceof Date ? dateObj : new Date(dateObj);
+            if (isNaN(d.getTime())) return '';
+            const pad = n => String(n).padStart(2, '0');
+            return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}T${pad(d.getHours())}:${pad(d.getMinutes())}`;
+        }
+
+        function setDefaultDates() {
+            const now = new Date();
+            const pad = n => String(n).padStart(2, '0');
+            const localDt = toLocalDateTimeInput(now);
+            const localDate = `${now.getFullYear()}-${pad(now.getMonth() + 1)}-${pad(now.getDate())}`;
+            const localTime = `${pad(now.getHours())}:${pad(now.getMinutes())}`;
+            const localMonth = `${now.getFullYear()}-${pad(now.getMonth() + 1)}`;
+
+            const sanDt = document.getElementById('sanTanggal');
+            if (sanDt && !sanDt.value) sanDt.value = localDt;
+
+            const ipalDt = document.getElementById('ipalTanggal');
+            if (ipalDt && !ipalDt.value) ipalDt.value = localDt;
+
+            ['b3InfTanggalMasuk', 'b3NonInfTanggalMasuk'].forEach(id => {
+                const el = document.getElementById(id);
+                if (el && !el.value) el.value = localDate;
+            });
+
+            ['b3InfJamMasuk', 'b3NonInfJamMasuk'].forEach(id => {
+                const el = document.getElementById(id);
+                if (el && !el.value) el.value = localTime;
+            });
+
+            [
+                'exportMonthSanitasi',
+                'exportMonthIpal',
+                'exportMonthB3Infeksius',
+                'exportMonthB3NonInfeksius',
+                'exportMonthSumurBor1',
+                'exportMonthSumurBor2'
+            ].forEach(id => {
+                const el = document.getElementById(id);
+                if (el && !el.value) el.value = localMonth;
+            });
+
+            const badge = document.getElementById('currentDateBadge');
+            if (badge) {
+                badge.textContent = now.toLocaleDateString('id-ID', {
+                    day: '2-digit',
+                    month: 'short',
+                    year: 'numeric'
+                });
+            }
+        }
+
+        function inferB3Kelompok(item) {
+            if (item && (item.kelompok === 'Infeksius' || item.kelompok === 'Non Infeksius')) {
+                return item.kelompok;
+            }
+            if (item && typeof item.jenis === 'string') {
+                if (item.jenis.toLowerCase().startsWith('non infeksius')) return 'Non Infeksius';
+                if (item.jenis.toLowerCase().startsWith('infeksius')) return 'Infeksius';
+            }
+            return B3_GROUP_MAP[item?.jenis] || 'Infeksius';
+        }
+
+        /* =====================================================================
+           INTEGRASI GOOGLE SPREADSHEET (GOOGLE APPS SCRIPT WEB APP)
+           ===================================================================== */
+        function loadGoogleSheetConfig() {
+            const saved = loadStorage(STORAGE_KEYS.SHEET_CFG, DEFAULT_SHEET_CONFIG);
+            sheetConfig = {
+                webAppUrl: String(saved?.webAppUrl || '').trim(),
+                includePhoto: Boolean(saved?.includePhoto)
+            };
+        }
+
+        function updateGoogleSheetUi() {
+            const tag = document.getElementById('sheetConfigStatusTag');
+            const urlInput = document.getElementById('sheetWebAppUrl');
+            const photoCheckbox = document.getElementById('sheetIncludePhoto');
+
+            if (urlInput && document.activeElement !== urlInput) {
+                urlInput.value = sheetConfig.webAppUrl || '';
+            }
+            if (photoCheckbox) {
+                photoCheckbox.checked = Boolean(sheetConfig.includePhoto);
+            }
+
+            if (tag) {
+                if (sheetConfig.webAppUrl) {
+                    tag.textContent = 'Terhubung';
+                    tag.className = 'text-[9px] font-bold px-2 py-0.5 rounded-full bg-emerald-100 text-emerald-800';
+                } else {
+                    tag.textContent = 'Belum Terhubung';
+                    tag.className = 'text-[9px] font-bold px-2 py-0.5 rounded-full bg-slate-200 text-slate-700';
+                }
+            }
+        }
+
+        function saveGoogleSheetConfig(e) {
+            e.preventDefault();
+            const urlVal = String(document.getElementById('sheetWebAppUrl')?.value || '').trim();
+            const includePhoto = Boolean(document.getElementById('sheetIncludePhoto')?.checked);
+
+            if (urlVal && !/^https:\/\/script\.google\.com\/macros\/s\/.+/i.test(urlVal)) {
+                showToast('Gunakan URL Web App Google Apps Script (https://script.google.com/macros/s/.../exec).');
+                return;
+            }
+
+            sheetConfig = { webAppUrl: urlVal, includePhoto };
+            saveStorage(STORAGE_KEYS.SHEET_CFG, sheetConfig);
+            updateGoogleSheetUi();
+            showToast(urlVal ? 'Konfigurasi Google Spreadsheet disimpan.' : 'URL Spreadsheet dikosongkan.');
+        }
+
+        function clearGoogleSheetConfig() {
+            sheetConfig = { webAppUrl: '', includePhoto: false };
+            saveStorage(STORAGE_KEYS.SHEET_CFG, sheetConfig);
+            updateGoogleSheetUi();
+            showToast('Koneksi Google Spreadsheet dilepas.');
+        }
+
+        async function syncToGoogleSpreadsheet(sheetName, payloadObj) {
+            const targetUrl = String(sheetConfig?.webAppUrl || '').trim();
+            if (!targetUrl) return false;
+
+            const bodyPayload = {
+                source: 'KESLING TRACK',
+                sheetName,
+                sentAt: new Date().toISOString(),
+                petugas: getActivePetugasLabel(),
+                record: {
+                    ...payloadObj,
+                    foto: sheetConfig.includePhoto ? (payloadObj?.foto || '') : (payloadObj?.foto ? '[Ada Foto]' : '')
+                }
+            };
+
+            try {
+                await fetch(targetUrl, {
+                    method: 'POST',
+                    mode: 'no-cors',
+                    headers: { 'Content-Type': 'text/plain;charset=utf-8' },
+                    body: JSON.stringify(bodyPayload)
+                });
+                return true;
+            } catch (err) {
+                console.warn('Gagal mengirim data ke Google Spreadsheet:', err);
+                return false;
+            }
+        }
+
+        async function testGoogleSheetConnection() {
+            const inputUrl = String(document.getElementById('sheetWebAppUrl')?.value || '').trim();
+            if (!inputUrl) {
+                showToast('Masukkan URL Web App Google Apps Script terlebih dahulu.');
+                return;
+            }
+            sheetConfig.webAppUrl = inputUrl;
+            sheetConfig.includePhoto = Boolean(document.getElementById('sheetIncludePhoto')?.checked);
+            saveStorage(STORAGE_KEYS.SHEET_CFG, sheetConfig);
+            updateGoogleSheetUi();
+
+            const ok = await syncToGoogleSpreadsheet('Tes Koneksi', {
+                pesan: 'Tes kirim data dari KESLING TRACK ke Google Spreadsheet',
+                waktu: new Date().toLocaleString('id-ID')
+            });
+            showToast(ok ? 'Permintaan tes terkirim ke Google Spreadsheet.' : 'Gagal mengirim tes ke Spreadsheet.');
+        }
+
+        /* =====================================================================
+           SINKRONISASI REALTIME & NOTIFIKASI ANTAR PENGGUNA
+           ===================================================================== */
+        function getClientSenderId() {
+            let sid = sessionStorage.getItem('kesling_client_sid');
+            if (!sid) {
+                sid = `client_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`;
+                sessionStorage.setItem('kesling_client_sid', sid);
+            }
+            return sid;
+        }
+
+        const syncChannel = ('BroadcastChannel' in window) ? new BroadcastChannel('kesling_track_realtime_v1') : null;
+        if (syncChannel) {
+            syncChannel.onmessage = (event) => {
+                const payload = event.data;
+                if (!payload || payload.senderId === getClientSenderId()) return;
+                handleIncomingRealtimePayload(payload);
+            };
+        }
+
+        function updateRealtimeBadgeUi() {
+            const cloudSection = document.getElementById('adminCloudRealtimeSection');
+            const statusTag = document.getElementById('cloudConfigStatusTag');
+            const urlInput = document.getElementById('cloudDatabaseUrl');
+            const keyInput = document.getElementById('cloudApiKey');
+
+            if (cloudSection) {
+                cloudSection.classList.remove('hidden');
+            }
+
+            if (urlInput && document.activeElement !== urlInput) {
+                urlInput.value = cloudConfig.databaseURL || '';
+            }
+            if (keyInput && document.activeElement !== keyInput) {
+                keyInput.value = cloudConfig.apiKey || '';
+            }
+
+            if (statusTag) {
+                if (isCloudConnected) {
+                    statusTag.textContent = 'Terhubung';
+                    statusTag.className = 'text-[9px] font-bold px-2 py-0.5 rounded-full bg-emerald-100 text-emerald-800';
+                } else {
+                    statusTag.textContent = 'Lokal';
+                    statusTag.className = 'text-[9px] font-bold px-2 py-0.5 rounded-full bg-slate-200 text-slate-700';
+                }
+            }
+        }
+
+        function initCloudRealtime() {
+            const savedCfg = loadStorage(STORAGE_KEYS.CLOUD_CFG, DEFAULT_CLOUD_CONFIG);
+            cloudConfig = {
+                databaseURL: (savedCfg?.databaseURL || DEFAULT_CLOUD_CONFIG.databaseURL || '').trim(),
+                apiKey: (savedCfg?.apiKey || DEFAULT_CLOUD_CONFIG.apiKey || '').trim()
+            };
+
+            if (!cloudConfig.databaseURL) {
+                isCloudConnected = false;
+                rtdbInstance = null;
+                updateRealtimeBadgeUi();
+                return;
+            }
+
+            try {
+                if (!window.firebase) {
+                    isCloudConnected = false;
+                    updateRealtimeBadgeUi();
+                    return;
+                }
+                const appName = 'keslingTrackApp';
+                const existingApp = firebase.apps.find(a => a.name === appName);
+                const targetApp = existingApp || firebase.initializeApp({
+                    apiKey: cloudConfig.apiKey || 'AIzaSyDummyKeyForRealtimeDB',
+                    databaseURL: cloudConfig.databaseURL
+                }, appName);
+
+                rtdbInstance = targetApp.database();
+                isCloudConnected = true;
+                updateRealtimeBadgeUi();
+
+                const rootRef = rtdbInstance.ref('kesling_track_v1');
+
+                rootRef.child('sanitasi').on('value', (snap) => {
+                    const val = snap.val();
+                    sanitasiData = Array.isArray(val) ? val : (val ? Object.values(val) : []);
+                    saveStorage(STORAGE_KEYS.SAN, sanitasiData);
+                    renderSanitasi();
+                    renderHomeSummary();
+                    refreshIcons();
+                });
+
+                rootRef.child('ipal').on('value', (snap) => {
+                    const val = snap.val();
+                    ipalData = Array.isArray(val) ? val : (val ? Object.values(val) : []);
+                    saveStorage(STORAGE_KEYS.IPAL, ipalData);
+                    renderIpal();
+                    updateIpalDebitPreview();
+                    refreshIcons();
+                });
+
+                rootRef.child('b3').on('value', (snap) => {
+                    const val = snap.val();
+                    b3Data = Array.isArray(val) ? val : (val ? Object.values(val) : []);
+                    saveStorage(STORAGE_KEYS.B3, b3Data);
+                    renderB3();
+                    renderHomeSummary();
+                    refreshIcons();
+                });
+
+                rootRef.child('sumurbor').on('value', (snap) => {
+                    const val = snap.val();
+                    sumurBorData = Array.isArray(val) ? val : (val ? Object.values(val) : []);
+                    saveStorage(STORAGE_KEYS.SB, sumurBorData);
+                    renderSumurBor();
+                    renderHomeSummary();
+                    refreshIcons();
+                });
+
+                rootRef.child('accounts').on('value', (snap) => {
+                    const val = snap.val();
+                    const list = Array.isArray(val) ? val : (val ? Object.values(val) : []);
+                    if (list.length) {
+                        accessAccounts = list;
+                        normalizeAccounts();
+                        renderAccessAccountsList();
+                    }
+                });
+
+                rootRef.child('notifications').on('value', (snap) => {
+                    const val = snap.val();
+                    const list = Array.isArray(val) ? val : (val ? Object.values(val) : []);
+                    list.sort((a, b) => (b.id || 0) - (a.id || 0));
+                    notificationsData = list.slice(0, 50);
+                    saveStorage(STORAGE_KEYS.NOTIF, notificationsData);
+
+                    if (!isFirstCloudNotifSnapshot) {
+                        const newestFromOther = notificationsData.find(
+                            n => n && !knownNotifIds.has(n.id) && n.senderId !== getClientSenderId()
+                        );
+                        if (newestFromOther) {
+                            triggerIncomingAlert(newestFromOther);
+                        }
+                    }
+                    isFirstCloudNotifSnapshot = false;
+                    notificationsData.forEach(n => knownNotifIds.add(n.id));
+                    renderNotificationsUi();
+                });
+            } catch (err) {
+                console.warn('Gagal menghubungkan Firebase Realtime:', err);
+                isCloudConnected = false;
+                updateRealtimeBadgeUi();
+                showToast('Gagal terhubung ke cloud realtime. Menggunakan mode lokal.');
+            }
+        }
+
+        function saveCloudConfig(e) {
+            e.preventDefault();
+            const dbUrl = (document.getElementById('cloudDatabaseUrl')?.value || '').trim();
+            const apiKey = (document.getElementById('cloudApiKey')?.value || '').trim();
+            if (!dbUrl) {
+                showToast('Masukkan Database URL Firebase terlebih dahulu.');
+                return;
+            }
+            cloudConfig = { databaseURL: dbUrl, apiKey };
+            saveStorage(STORAGE_KEYS.CLOUD_CFG, cloudConfig);
+            isFirstCloudNotifSnapshot = true;
+            initCloudRealtime();
+            if (isCloudConnected) {
+                pushAllDataToCloud();
+                showToast('Koneksi Realtime aktif dan data tersinkronisasi.');
+            }
+        }
+
+        function disconnectCloudConfig() {
+            cloudConfig = { databaseURL: '', apiKey: '' };
+            saveStorage(STORAGE_KEYS.CLOUD_CFG, cloudConfig);
+            isCloudConnected = false;
+            rtdbInstance = null;
+            updateRealtimeBadgeUi();
+            showToast('Koneksi cloud dimatikan (mode lokal).');
+        }
+
+        function pushCollectionToCloud(collectionKey, dataArr) {
+            if (isApplyingCloudSync) return;
+            if (syncChannel) {
+                syncChannel.postMessage({
+                    type: 'COLLECTION_UPDATE',
+                    collectionKey,
+                    data: dataArr,
+                    senderId: getClientSenderId()
+                });
+            }
+            if (isCloudConnected && rtdbInstance) {
+                rtdbInstance.ref(`kesling_track_v1/${collectionKey}`).set(dataArr).catch(err => {
+                    console.warn('Gagal sinkron ke cloud:', collectionKey, err);
+                });
+            }
+        }
+
+        function pushAllDataToCloud() {
+            if (!isCloudConnected || !rtdbInstance) return;
+            rtdbInstance.ref('kesling_track_v1').update({
+                sanitasi: sanitasiData,
+                ipal: ipalData,
+                b3: b3Data,
+                sumurbor: sumurBorData,
+                accounts: accessAccounts,
+                notifications: notificationsData
+            }).catch(err => console.warn('Gagal push semua data:', err));
+        }
+
+        function handleIncomingRealtimePayload(payload) {
+            isApplyingCloudSync = true;
+            try {
+                if (payload.type === 'COLLECTION_UPDATE' && Array.isArray(payload.data)) {
+                    if (payload.collectionKey === 'sanitasi') {
+                        sanitasiData = payload.data;
+                        saveStorage(STORAGE_KEYS.SAN, sanitasiData);
+                        renderSanitasi();
+                        renderHomeSummary();
+                    } else if (payload.collectionKey === 'ipal') {
+                        ipalData = payload.data;
+                        saveStorage(STORAGE_KEYS.IPAL, ipalData);
+                        renderIpal();
+                        updateIpalDebitPreview();
+                    } else if (payload.collectionKey === 'b3') {
+                        b3Data = payload.data;
+                        saveStorage(STORAGE_KEYS.B3, b3Data);
+                        renderB3();
+                        renderHomeSummary();
+                    } else if (payload.collectionKey === 'sumurbor') {
+                        sumurBorData = payload.data;
+                        saveStorage(STORAGE_KEYS.SB, sumurBorData);
+                        renderSumurBor();
+                        renderHomeSummary();
+                    }
+                    refreshIcons();
+                } else if (payload.type === 'NEW_NOTIFICATION' && payload.notification) {
+                    const notif = payload.notification;
+                    if (!notificationsData.some(item => item.id === notif.id)) {
+                        notificationsData.unshift(notif);
+                        notificationsData = notificationsData.slice(0, 50);
+                        saveStorage(STORAGE_KEYS.NOTIF, notificationsData);
+                        knownNotifIds.add(notif.id);
+                        renderNotificationsUi();
+                        triggerIncomingAlert(notif);
+                    }
+                }
+            } finally {
+                isApplyingCloudSync = false;
+            }
+        }
+
+        function publishNotification(title, message, category = 'Laporan') {
+            const actor = getActivePetugasLabel();
+            const notif = {
+                id: Date.now() + Math.floor(Math.random() * 1000),
+                title,
+                message,
+                category,
+                actor,
+                createdAt: new Date().toISOString(),
+                senderId: getClientSenderId()
+            };
+
+            notificationsData.unshift(notif);
+            notificationsData = notificationsData.slice(0, 50);
+            knownNotifIds.add(notif.id);
+            saveStorage(STORAGE_KEYS.NOTIF, notificationsData);
+            renderNotificationsUi();
+
+            if (syncChannel) {
+                syncChannel.postMessage({
+                    type: 'NEW_NOTIFICATION',
+                    notification: notif,
+                    senderId: getClientSenderId()
+                });
+            }
+            if (isCloudConnected && rtdbInstance) {
+                rtdbInstance.ref('kesling_track_v1/notifications').set(notificationsData).catch(err => {
+                    console.warn('Gagal kirim notifikasi ke cloud:', err);
+                });
+            }
+        }
+
+        function triggerIncomingAlert(notif) {
+            if (!isLoggedIn) return;
+            showToast(`${notif.title}: ${notif.message}`);
+            if ('Notification' in window && Notification.permission === 'granted') {
+                try {
+                    new Notification(notif.title || 'KESLING TRACK', {
+                        body: notif.message || 'Ada update laporan baru'
+                    });
+                } catch (_) {}
+            }
+        }
+
+        function requestBrowserNotificationPermission() {
+            if ('Notification' in window && Notification.permission === 'default') {
+                Notification.requestPermission().catch(() => {});
+            }
+        }
+
+        function renderNotificationsUi() {
+            const badge = document.getElementById('notifUnreadBadge');
+            const banner = document.getElementById('homeLatestNotifBanner');
+            const bannerText = document.getElementById('homeLatestNotifText');
+            const listEl = document.getElementById('notificationsList');
+
+            const unreadCount = notificationsData.filter(n => (n.id || 0) > lastReadNotifId && n.senderId !== getClientSenderId()).length;
+
+            if (badge) {
+                if (unreadCount > 0) {
+                    badge.textContent = unreadCount > 99 ? '99+' : String(unreadCount);
+                    badge.classList.remove('hidden');
+                } else {
+                    badge.classList.add('hidden');
+                }
+            }
+
+            if (banner && bannerText) {
+                const latest = notificationsData[0] || null;
+                if (latest && isLoggedIn) {
+                    banner.classList.remove('hidden');
+                    bannerText.textContent = `${latest.title} · ${latest.message} (${latest.actor || 'Petugas'})`;
+                } else {
+                    banner.classList.add('hidden');
+                }
+            }
+
+            if (listEl) {
+                if (!notificationsData.length) {
+                    listEl.innerHTML = `<div class="text-center py-8 text-xs text-slate-500">Belum ada notifikasi aktivitas laporan.</div>`;
+                    return;
+                }
+
+                listEl.innerHTML = notificationsData.map(n => {
+                    const isUnread = (n.id || 0) > lastReadNotifId;
+                    return `
+                        <div class="p-3 rounded-xl border ${isUnread ? 'bg-teal-50/70 border-teal-200' : 'bg-slate-50 border-slate-100'} space-y-1">
+                            <div class="flex items-center justify-between gap-2">
+                                <span class="text-[10px] font-extrabold uppercase tracking-wider text-teal-800">${escapeHtml(n.category || 'Update')}</span>
+                                <span class="text-[10px] text-slate-400">${escapeHtml(formatDateTime(n.createdAt))}</span>
+                            </div>
+                            <div class="text-xs font-extrabold text-slate-800">${escapeHtml(n.title)}</div>
+                            <div class="text-[11px] text-slate-600">${escapeHtml(n.message)}</div>
+                            <div class="text-[10px] font-semibold text-slate-500">Oleh: ${escapeHtml(n.actor || '-')}</div>
+                        </div>
+                    `;
+                }).join('');
+                refreshIcons();
+            }
+        }
+
+        function openNotificationsModal() {
+            requestBrowserNotificationPermission();
+            renderNotificationsUi();
+            const modal = document.getElementById('notificationsModal');
+            if (modal) modal.classList.remove('hidden');
+            refreshIcons();
+        }
+
+        function closeNotificationsModal() {
+            const modal = document.getElementById('notificationsModal');
+            if (modal) modal.classList.add('hidden');
+        }
+
+        function markAllNotificationsRead() {
+            const maxId = notificationsData.reduce((max, n) => Math.max(max, Number(n.id) || 0), lastReadNotifId);
+            lastReadNotifId = maxId;
+            saveStorage(STORAGE_KEYS.NOTIF_READ, lastReadNotifId);
+            renderNotificationsUi();
+            showToast('Semua notifikasi ditandai telah dibaca.');
+        }
+
+        /* =====================================================================
+           AUTENTIKASI, HAK AKSES & MANAJEMEN AKUN
+           ===================================================================== */
+        function normalizeAccounts() {
+            if (!Array.isArray(accessAccounts) || !accessAccounts.length) {
+                accessAccounts = DEFAULT_ACCOUNTS.map(a => ({ ...a }));
+            }
+            const seenNames = new Set();
+            const cleaned = [];
+            accessAccounts.forEach((acc, idx) => {
+                if (!acc || typeof acc !== 'object') return;
+                const nama = String(acc.nama || '').trim() || 'Petugas Kesling';
+                const key = nama.toLowerCase();
+                if (seenNames.has(key)) return;
+                seenNames.add(key);
+                cleaned.push({
+                    id: acc.id || (1000 + idx),
+                    nama,
+                    email: String(acc.email || '').trim().toLowerCase(),
+                    password: '',
+                    role: 'Petugas Kesling',
+                    active: true
+                });
+            });
+            accessAccounts = cleaned;
+            saveStorage(STORAGE_KEYS.ACCOUNTS, accessAccounts);
+        }
+
+        function isCurrentUserAdmin() {
+            return false;
+        }
+
+        function getActivePetugasLabel() {
+            const nama = String(petugasAccount?.nama || '').trim();
+            if (!nama || nama === 'Tamu / Belum Masuk') {
+                return 'Petugas Kesling';
+            }
+            return nama;
+        }
+
+        function applyPetugasToForms() {
+            const label = getActivePetugasLabel();
+            const sanPetugas = document.getElementById('sanPetugas');
+            if (sanPetugas) sanPetugas.value = label;
+
+            const ipalPetugas = document.getElementById('ipalPetugas');
+            if (ipalPetugas) ipalPetugas.value = label;
+
+            const settingsActive = document.getElementById('settingsActivePetugas');
+            if (settingsActive) {
+                settingsActive.textContent = label;
+            }
+        }
+
+        function updateLoginVisibility() {
+            isLoggedIn = true;
+            renderNotificationsUi();
+            refreshIcons();
+        }
+
+        function updateAdminModeUi() {
+            isAdminMode = false;
+        }
+
+        function renderAccessAccountsList() {
+            const listEl = document.getElementById('accessAccountsList');
+            const countEl = document.getElementById('accessAccountCount');
+            const activeNama = getActivePetugasLabel().toLowerCase();
+
+            if (countEl) {
+                countEl.textContent = `${accessAccounts.length} petugas`;
+            }
+            if (!listEl) return;
+
+            listEl.innerHTML = accessAccounts.map(acc => {
+                const isCurrent = String(acc.nama || '').trim().toLowerCase() === activeNama;
+
+                return `
+                    <div class="p-2.5 rounded-xl border ${isCurrent ? 'border-teal-300 bg-teal-50/40' : 'border-slate-200 bg-slate-50/60'} flex items-center justify-between gap-2">
+                        <div class="min-w-0">
+                            <div class="text-xs font-extrabold text-slate-800 truncate">
+                                ${escapeHtml(acc.nama)}
+                                ${isCurrent ? '<span class="ml-1 text-[9px] font-bold px-1.5 py-0.5 rounded-full bg-teal-600 text-white">Aktif</span>' : ''}
+                            </div>
+                        </div>
+                        <button
+                            type="button"
+                            onclick="selectAccessAccount(${acc.id})"
+                            class="px-2.5 py-1 rounded-lg text-[10px] font-bold transition bg-white hover:bg-teal-50 text-teal-700 border border-teal-200 shrink-0"
+                        >
+                            Pakai
+                        </button>
+                    </div>
+                `;
+            }).join('');
+        }
+
+        function savePetugasAccount(e) {
+            e.preventDefault();
+            const nama = String(document.getElementById('inputPetugasNama')?.value || '').trim();
+
+            if (!nama) {
+                showToast('Masukkan nama petugas terlebih dahulu.');
+                return;
+            }
+
+            const existingIdx = accessAccounts.findIndex(
+                acc => String(acc.nama || '').trim().toLowerCase() === nama.toLowerCase()
+            );
+
+            let activeAcc;
+            if (existingIdx !== -1) {
+                accessAccounts[existingIdx] = {
+                    ...accessAccounts[existingIdx],
+                    nama,
+                    active: true
+                };
+                activeAcc = accessAccounts[existingIdx];
+            } else {
+                activeAcc = {
+                    id: Date.now(),
+                    nama,
+                    email: '',
+                    password: '',
+                    role: 'Petugas Kesling',
+                    active: true
+                };
+                accessAccounts.push(activeAcc);
+            }
+
+            normalizeAccounts();
+            saveStorage(STORAGE_KEYS.ACCOUNTS, accessAccounts);
+            pushCollectionToCloud('accounts', accessAccounts);
+
+            petugasAccount = {
+                nama: activeAcc.nama,
+                email: '',
+                role: 'Petugas Kesling'
+            };
+            isLoggedIn = true;
+
+            saveStorage(STORAGE_KEYS.PETUGAS, petugasAccount);
+            applyPetugasToForms();
+            renderAccessAccountsList();
+            refreshIcons();
+            showToast(`Petugas aktif: ${activeAcc.nama}`);
+        }
+
+        function selectAccessAccount(accountId) {
+            const target = accessAccounts.find(acc => String(acc.id) === String(accountId));
+            if (!target) {
+                showToast('Petugas tidak ditemukan.');
+                return;
+            }
+
+            petugasAccount = {
+                nama: target.nama,
+                email: '',
+                role: 'Petugas Kesling'
+            };
+            isLoggedIn = true;
+
+            saveStorage(STORAGE_KEYS.PETUGAS, petugasAccount);
+            applyPetugasToForms();
+            renderAccessAccountsList();
+            refreshIcons();
+            showToast(`Beralih ke petugas ${target.nama}.`);
+        }
+
+        function openSettingsModal() {
+            applyPetugasToForms();
+            updateGoogleSheetUi();
+            updateRealtimeBadgeUi();
+            const modal = document.getElementById('settingsModal');
+            if (modal) modal.classList.remove('hidden');
+            refreshIcons();
+        }
+
+        function closeSettingsModal() {
+            const modal = document.getElementById('settingsModal');
+            if (modal) modal.classList.add('hidden');
+        }
+
+        function openAccountFromSettings() {
+            closeSettingsModal();
+            openPetugasModal();
+        }
+
+        function openPetugasModal() {
+            normalizeAccounts();
+            applyPetugasToForms();
+            renderAccessAccountsList();
+            const modal = document.getElementById('petugasModal');
+            if (modal) modal.classList.remove('hidden');
+            refreshIcons();
+        }
+
+        function closePetugasModal() {
+            const modal = document.getElementById('petugasModal');
+            if (modal) modal.classList.add('hidden');
+        }
+
+        /* =====================================================================
+           UNGGAH FOTO & MODAL DOKUMENTASI
+           ===================================================================== */
+        function openPhotoModal(src, title) {
+            if (!src) return;
+            const modal = document.getElementById('photoModal');
+            const img = document.getElementById('photoModalImg');
+            const titleEl = document.getElementById('photoModalTitle');
+            if (img) img.src = src;
+            if (titleEl) titleEl.textContent = title || 'Dokumentasi';
+            if (modal) modal.classList.remove('hidden');
+            refreshIcons();
+        }
+
+        function closePhotoModal() {
+            const modal = document.getElementById('photoModal');
+            if (modal) modal.classList.add('hidden');
+        }
+
+        function resetPhotoField(inputId, previewId, dataId) {
+            const inputEl = document.getElementById(inputId);
+            const previewEl = document.getElementById(previewId);
+            const dataEl = document.getElementById(dataId);
+            if (inputEl) inputEl.value = '';
+            if (dataEl) dataEl.value = '';
+            if (previewEl) {
+                previewEl.src = '';
+                previewEl.classList.add('hidden');
+            }
+        }
+
+        function handlePhotoUpload(event, previewId, dataId) {
+            const file = event?.target?.files?.[0];
+            if (!file) return;
+
+            const previewEl = document.getElementById(previewId);
+            const dataEl = document.getElementById(dataId);
+            const reader = new FileReader();
+
+            reader.onload = function (e) {
+                const img = new Image();
+                img.onload = function () {
+                    const maxDim = 960;
+                    let width = img.width || maxDim;
+                    let height = img.height || maxDim;
+                    if (width > maxDim || height > maxDim) {
+                        if (width > height) {
+                            height = Math.round((height * maxDim) / width);
+                            width = maxDim;
+                        } else {
+                            width = Math.round((width * maxDim) / height);
+                            height = maxDim;
+                        }
+                    }
+
+                    const canvas = document.createElement('canvas');
+                    canvas.width = width;
+                    canvas.height = height;
+                    const ctx = canvas.getContext('2d');
+                    if (ctx) {
+                        ctx.drawImage(img, 0, 0, width, height);
+                        const compressedUrl = canvas.toDataURL('image/jpeg', 0.72);
+                        if (dataEl) dataEl.value = compressedUrl;
+                        if (previewEl) {
+                            previewEl.src = compressedUrl;
+                            previewEl.classList.remove('hidden');
+                        }
+                        return;
+                    }
+
+                    const rawUrl = String(e.target?.result || '');
+                    if (dataEl) dataEl.value = rawUrl;
+                    if (previewEl) {
+                        previewEl.src = rawUrl;
+                        previewEl.classList.remove('hidden');
+                    }
+                };
+                img.onerror = function () {
+                    const rawUrl = String(e.target?.result || '');
+                    if (dataEl) dataEl.value = rawUrl;
+                    if (previewEl) {
+                        previewEl.src = rawUrl;
+                        previewEl.classList.remove('hidden');
+                    }
+                };
+                img.src = String(e.target?.result || '');
+            };
+
+            reader.readAsDataURL(file);
+        }
+
+        /* =====================================================================
+           NAVIGASI TAB & RINGKASAN BERANDA
+           ===================================================================== */
+        function switchTab(tabName) {
+            const allowedTabs = ['home', 'sanitasi', 'ipal', 'b3', 'sumurbor'];
+            currentTab = allowedTabs.includes(tabName) ? tabName : 'home';
+
+            document.querySelectorAll('.tab-content').forEach(sec => {
+                sec.classList.toggle('hidden', sec.id !== `tab-${currentTab}`);
+            });
+
+            document.querySelectorAll('[data-nav-tab]').forEach(btn => {
+                btn.classList.toggle('active', btn.getAttribute('data-nav-tab') === currentTab);
+            });
+
+            if (currentTab === 'home') renderHomeSummary();
+            if (currentTab === 'sanitasi') renderSanitasi();
+            if (currentTab === 'ipal') {
+                renderIpal();
+                updateIpalDebitPreview();
+            }
+            if (currentTab === 'b3') renderB3();
+            if (currentTab === 'sumurbor') {
+                renderSumurBor();
+                updateSumurBorPreview('1');
+                updateSumurBorPreview('2');
+            }
+
+            refreshIcons();
+        }
+
+        function renderHomeSummary() {
+            let openCount = 0;
+            let progresCount = 0;
+            let closeCount = 0;
+
+            sanitasiData.forEach(d => {
+                if (d.status === 'Close') closeCount++;
+                else if (d.status === 'Progres') progresCount++;
+                else openCount++;
+            });
+
+            const elOpen = document.getElementById('homeOpenCount');
+            const elProgres = document.getElementById('homeProgresCount');
+            const elClose = document.getElementById('homeCloseCount');
+            if (elOpen) elOpen.textContent = String(openCount);
+            if (elProgres) elProgres.textContent = String(progresCount);
+            if (elClose) elClose.textContent = String(closeCount);
+
+            let infMasuk = 0;
+            let infKeluar = 0;
+            let nonInfMasuk = 0;
+            let nonInfKeluar = 0;
+
+            b3Data.forEach(d => {
+                const berat = parseFloat(d.berat) || 0;
+                if (inferB3Kelompok(d) === 'Non Infeksius') {
+                    if (d.tipe === 'Keluar') nonInfKeluar += berat;
+                    else nonInfMasuk += berat;
+                } else {
+                    if (d.tipe === 'Keluar') infKeluar += berat;
+                    else infMasuk += berat;
+                }
+            });
+
+            const infSaldo = infMasuk - infKeluar;
+            const nonInfSaldo = nonInfMasuk - nonInfKeluar;
+
+            const elInfSaldo = document.getElementById('homeB3InfSaldo');
+            const elInfDihasilkan = document.getElementById('homeB3InfDihasilkan');
+            const elNonInfSaldo = document.getElementById('homeB3NonInfSaldo');
+            const elNonInfDihasilkan = document.getElementById('homeB3NonInfDihasilkan');
+
+            if (elInfSaldo) elInfSaldo.textContent = `${infSaldo.toFixed(1)} kg`;
+            if (elInfDihasilkan) elInfDihasilkan.textContent = `Dihasilkan: ${infMasuk.toFixed(1)} kg`;
+            if (elNonInfSaldo) elNonInfSaldo.textContent = `${nonInfSaldo.toFixed(1)} kg`;
+            if (elNonInfDihasilkan) elNonInfDihasilkan.textContent = `Dihasilkan: ${nonInfMasuk.toFixed(1)} kg`;
+
+            let sb1Debit = 0;
+            let sb2Debit = 0;
+
+            sumurBorData.forEach(d => {
+                const debit = parseFloat(d.debit !== undefined ? d.debit : d.pemakaian) || 0;
+                if ((d.titik || '').includes('2')) sb2Debit += debit;
+                else sb1Debit += debit;
+            });
+
+            const sbTotal = sb1Debit + sb2Debit;
+            const elSbTotal = document.getElementById('homeSbTotal');
+            const elSb1 = document.getElementById('homeSb1Debit');
+            const elSb2 = document.getElementById('homeSb2Debit');
+
+            if (elSbTotal) elSbTotal.textContent = `${sbTotal.toFixed(2)} m³`;
+            if (elSb1) elSb1.textContent = `${sb1Debit.toFixed(2)} m³`;
+            if (elSb2) elSb2.textContent = `${sb2Debit.toFixed(2)} m³`;
+        }
+
+        /* =====================================================================
+           MODUL 1: INSPEKSI
+           ===================================================================== */
+        function toggleInspeksiForm(forceState) {
+            const card = document.getElementById('sanitasiFormCard');
+            if (!card) return;
+            const shouldOpen = typeof forceState === 'boolean' ? forceState : card.classList.contains('hidden');
+            card.classList.toggle('hidden', !shouldOpen);
+            if (shouldOpen) {
+                applyPetugasToForms();
+                setDefaultDates();
+                card.scrollIntoView({ behavior: 'smooth', block: 'start' });
+            }
+        }
+
+        function handleSanitasiSubmit(e) {
+            e.preventDefault();
+            const tanggal = document.getElementById('sanTanggal').value;
+            const lantai = document.getElementById('sanLantai').value;
+            const tempat = String(document.getElementById('sanTempat').value || '').trim();
+            const kategori = document.getElementById('sanKategori').value;
+            const status = document.getElementById('sanStatus').value;
+            const perbaikan = String(document.getElementById('sanPerbaikan').value || '').trim();
+            const pencegahan = String(document.getElementById('sanPencegahan').value || '').trim();
+            const foto = document.getElementById('sanFotoData').value || '';
+            const petugasAktif = getActivePetugasLabel();
+
+            const item = {
+                id: Date.now(),
+                tanggal,
+                lantai,
+                tempat,
+                kategori,
+                status,
+                perbaikan,
+                pencegahan,
+                foto,
+                petugas: petugasAktif,
+                updatedBy: petugasAktif,
+                updatedAt: new Date().toISOString()
+            };
+
+            sanitasiData.unshift(item);
+            saveStorage(STORAGE_KEYS.SAN, sanitasiData);
+            pushCollectionToCloud('sanitasi', sanitasiData);
+            syncToGoogleSpreadsheet('Inspeksi', item);
+            publishNotification(
+                `Inspeksi Baru (${status})`,
+                `${tempat} · ${lantai} (${kategori})`,
+                'Inspeksi'
+            );
+
+            document.getElementById('sanitasiForm').reset();
+            resetPhotoField('sanFoto', 'sanFotoPreview', 'sanFotoData');
+            setDefaultDates();
+            toggleInspeksiForm(false);
+            renderAll();
+            showToast('Laporan inspeksi berhasil disimpan.');
+        }
+
+        function updateSanitasiStatus(id, newStatus) {
+            const petugasAktif = getActivePetugasLabel();
+            let updatedItem = null;
+
+            sanitasiData = sanitasiData.map(item => {
+                if (item.id !== id) return item;
+                updatedItem = {
+                    ...item,
+                    status: newStatus,
+                    updatedBy: petugasAktif,
+                    updatedAt: new Date().toISOString()
+                };
+                return updatedItem;
+            });
+
+            if (!updatedItem) return;
+            saveStorage(STORAGE_KEYS.SAN, sanitasiData);
+            pushCollectionToCloud('sanitasi', sanitasiData);
+            syncToGoogleSpreadsheet('Inspeksi', { ...updatedItem, aksi: 'Update Status' });
+            publishNotification(
+                `Status Inspeksi: ${newStatus}`,
+                `${updatedItem.tempat} (${updatedItem.lantai || '-'}) diubah oleh ${petugasAktif}`,
+                'Inspeksi'
+            );
+            renderSanitasi();
+            renderHomeSummary();
+            refreshIcons();
+            showToast(`Status kasus diperbarui menjadi ${newStatus}.`);
+        }
+
+        function renderSanitasi() {
+            let total = 0;
+            let open = 0;
+            let progres = 0;
+            let close = 0;
+
+            sanitasiData.forEach(d => {
+                total++;
+                if (d.status === 'Close') close++;
+                else if (d.status === 'Progres') progres++;
+                else open++;
+            });
+
+            document.getElementById('sanKpiTotal').textContent = String(total);
+            document.getElementById('sanKpiOpen').textContent = String(open);
+            document.getElementById('sanKpiProgres').textContent = String(progres);
+            document.getElementById('sanKpiClose').textContent = String(close);
+
+            const filterVal = document.getElementById('sanFilterStatus')?.value || 'ALL';
+            const filtered = filterVal === 'ALL'
+                ? sanitasiData
+                : sanitasiData.filter(d => d.status === filterVal);
+
+            const listEl = document.getElementById('sanitasiList');
+            const tbodyEl = document.getElementById('sanitasiTableBody');
+            const countBadge = document.getElementById('sanHistoryCount');
+
+            if (countBadge) {
+                countBadge.textContent = `${filtered.length} laporan`;
+            }
+
+            if (!filtered.length) {
+                if (listEl) {
+                    listEl.innerHTML = `<div class="col-span-full text-center py-6 text-xs text-slate-500">Belum ada data inspeksi untuk filter ini.</div>`;
+                }
+                if (tbodyEl) {
+                    tbodyEl.innerHTML = `<tr><td colspan="7" class="px-3 py-6 text-center text-xs text-slate-500">Belum ada riwayat laporan inspeksi.</td></tr>`;
+                }
+                return;
+            }
+
+            if (listEl) {
+                listEl.innerHTML = filtered.map(d => {
+                    const statusBadge = d.status === 'Close'
+                        ? 'bg-emerald-100 text-emerald-800 border-emerald-200'
+                        : (d.status === 'Progres'
+                            ? 'bg-amber-100 text-amber-800 border-amber-200'
+                            : 'bg-rose-100 text-rose-800 border-rose-200');
+                    const actorLabel = d.updatedBy || d.petugas || '-';
+
+                    return `
+                        <div class="p-3 rounded-xl border border-slate-200/80 bg-slate-50/60 space-y-2">
+                            <div class="flex items-start justify-between gap-2">
+                                <div class="min-w-0">
+                                    <div class="text-xs font-extrabold text-slate-800 truncate">${escapeHtml(d.tempat)}</div>
+                                    <div class="text-[10px] text-slate-500">${escapeHtml(d.lantai || '-')} · ${escapeHtml(d.kategori)} · ${escapeHtml(formatDateTime(d.tanggal))}</div>
+                                </div>
+                                <span class="px-2 py-0.5 rounded-full text-[10px] font-bold border ${statusBadge} shrink-0">${escapeHtml(d.status)}</span>
+                            </div>
+                            <div class="text-[11px] text-slate-700 space-y-0.5">
+                                <div><span class="font-bold text-slate-600">Perbaikan:</span> ${escapeHtml(d.perbaikan)}</div>
+                                <div><span class="font-bold text-slate-600">Pencegahan:</span> ${escapeHtml(d.pencegahan)}</div>
+                            </div>
+                            <div class="flex items-center justify-between gap-2 pt-1 border-t border-slate-200/60">
+                                <div class="flex items-center gap-2">
+                                    <span class="text-[10px] font-semibold text-slate-500">Petugas: ${escapeHtml(actorLabel)}</span>
+                                    ${d.foto ? `<button type="button" onclick="openPhotoModal('${d.foto}', 'Inspeksi - ${escapeHtml(d.tempat)}')" class="inline-flex items-center gap-1 text-[10px] font-bold text-teal-700 hover:underline"><i data-lucide="image" class="w-3 h-3"></i>Foto</button>` : ''}
+                                </div>
+                                <div class="flex items-center gap-1.5">
+                                    <select onchange="updateSanitasiStatus(${d.id}, this.value)" class="text-[10px] font-bold rounded-lg border border-slate-200 bg-white px-2 py-1 text-slate-700">
+                                        <option value="Open" ${d.status === 'Open' ? 'selected' : ''}>Open</option>
+                                        <option value="Progres" ${d.status === 'Progres' ? 'selected' : ''}>Progres</option>
+                                        <option value="Close" ${d.status === 'Close' ? 'selected' : ''}>Close</option>
+                                    </select>
+                                    <button type="button" onclick="deleteItem('SAN', ${d.id})" class="p-1 text-slate-400 hover:text-rose-600 rounded-lg transition" title="Hapus">
+                                        <i data-lucide="trash-2" class="w-3.5 h-3.5"></i>
+                                    </button>
+                                </div>
+                            </div>
+                        </div>
+                    `;
+                }).join('');
+            }
+
+            if (tbodyEl) {
+                tbodyEl.innerHTML = filtered.map(d => {
+                    const statusBadge = d.status === 'Close'
+                        ? 'bg-emerald-100 text-emerald-800 border-emerald-200'
+                        : (d.status === 'Progres'
+                            ? 'bg-amber-100 text-amber-800 border-amber-200'
+                            : 'bg-rose-100 text-rose-800 border-rose-200');
+                    const actorLabel = d.updatedBy || d.petugas || '-';
+
+                    return `
+                        <tr class="hover:bg-slate-50/80 transition align-top">
+                            <td class="px-2.5 py-2 whitespace-nowrap text-[11px] text-slate-600">${escapeHtml(formatDateTime(d.tanggal))}</td>
+                            <td class="px-2 py-2">
+                                <div class="font-bold text-slate-800">${escapeHtml(d.tempat)}</div>
+                                <div class="text-[10px] text-slate-500">${escapeHtml(d.lantai || '-')}</div>
+                            </td>
+                            <td class="px-2 py-2 text-[11px] font-medium text-slate-700">${escapeHtml(d.kategori)}</td>
+                            <td class="px-2 py-2 text-[11px] text-slate-600 max-w-[200px]">
+                                <div><span class="font-semibold text-slate-700">Perbaikan:</span> ${escapeHtml(d.perbaikan)}</div>
+                                <div class="mt-0.5"><span class="font-semibold text-slate-700">Pencegahan:</span> ${escapeHtml(d.pencegahan)}</div>
+                            </td>
+                            <td class="px-2 py-2 whitespace-nowrap">
+                                <span class="px-2 py-0.5 rounded-full text-[10px] font-bold border ${statusBadge}">${escapeHtml(d.status)}</span>
+                            </td>
+                            <td class="px-2 py-2 text-[11px]">
+                                <div class="font-semibold text-slate-700">${escapeHtml(actorLabel)}</div>
+                                ${d.foto ? `<button type="button" onclick="openPhotoModal('${d.foto}', 'Inspeksi - ${escapeHtml(d.tempat)}')" class="mt-1 inline-flex items-center gap-1 text-[10px] font-bold text-teal-700 hover:underline"><i data-lucide="image" class="w-3 h-3"></i>Foto</button>` : `<span class="text-[10px] text-slate-400">Tanpa foto</span>`}
+                            </td>
+                            <td class="px-2 py-2 text-center whitespace-nowrap">
+                                <div class="inline-flex items-center gap-1">
+                                    <select onchange="updateSanitasiStatus(${d.id}, this.value)" class="text-[10px] font-bold rounded-lg border border-slate-200 bg-white px-1.5 py-1 text-slate-700">
+                                        <option value="Open" ${d.status === 'Open' ? 'selected' : ''}>Open</option>
+                                        <option value="Progres" ${d.status === 'Progres' ? 'selected' : ''}>Progres</option>
+                                        <option value="Close" ${d.status === 'Close' ? 'selected' : ''}>Close</option>
+                                    </select>
+                                    <button type="button" onclick="deleteItem('SAN', ${d.id})" class="p-1 text-slate-400 hover:text-rose-600 rounded-lg transition" title="Hapus">
+                                        <i data-lucide="trash-2" class="w-3.5 h-3.5"></i>
+                                    </button>
+                                </div>
+                            </td>
+                        </tr>
+                    `;
+                }).join('');
+            }
+        }
+
+        /* =====================================================================
+           MODUL 2: IPAL
+           ===================================================================== */
+        function toggleIpalForm(forceState) {
+            const card = document.getElementById('ipalFormCard');
+            if (!card) return;
+            const shouldOpen = typeof forceState === 'boolean' ? forceState : card.classList.contains('hidden');
+            card.classList.toggle('hidden', !shouldOpen);
+            if (shouldOpen) {
+                applyPetugasToForms();
+                setDefaultDates();
+                updateIpalDebitPreview();
+                card.scrollIntoView({ behavior: 'smooth', block: 'start' });
+            }
+        }
+
+        function getLatestIpalMeter() {
+            if (!Array.isArray(ipalData) || !ipalData.length) return null;
+            const val = parseFloat(ipalData[0].outlet);
+            return isNaN(val) ? null : val;
+        }
+
+        function updateIpalDebitPreview() {
+            const outletInput = document.getElementById('ipalOutlet');
+            const previewEl = document.getElementById('ipalDebitPreview');
+            const infoEl = document.getElementById('ipalPrevMeterInfo');
+            const prevMeter = getLatestIpalMeter();
+
+            if (infoEl) {
+                infoEl.textContent = prevMeter !== null
+                    ? `Meteran laporan sebelumnya: ${prevMeter.toFixed(2)} m³`
+                    : 'Meteran laporan sebelumnya: belum ada (0.00 m³)';
+            }
+
+            if (!outletInput || !previewEl) return;
+            const currentVal = parseFloat(outletInput.value);
+            if (isNaN(currentVal)) {
+                previewEl.value = '0.00 m³';
+                return;
+            }
+            const debit = prevMeter !== null ? (currentVal - prevMeter) : currentVal;
+            previewEl.value = `${debit.toFixed(2)} m³`;
+        }
+
+        function handleIpalSubmit(e) {
+            e.preventDefault();
+            const tanggal = document.getElementById('ipalTanggal').value;
+            const ph = parseFloat(document.getElementById('ipalPh').value);
+            const cod = parseFloat(document.getElementById('ipalCod').value);
+            const bod = parseFloat(document.getElementById('ipalBod').value);
+            const toc = parseFloat(document.getElementById('ipalToc').value);
+            const outlet = parseFloat(document.getElementById('ipalOutlet').value);
+            const foto = document.getElementById('ipalFotoData').value || '';
+            const prevMeter = getLatestIpalMeter();
+            const debit = prevMeter !== null ? (outlet - prevMeter) : outlet;
+            const petugasAktif = getActivePetugasLabel();
+
+            const item = {
+                id: Date.now(),
+                tanggal,
+                ph,
+                cod,
+                bod,
+                toc,
+                outlet,
+                debit,
+                foto,
+                petugas: petugasAktif,
+                updatedBy: petugasAktif,
+                updatedAt: new Date().toISOString()
+            };
+
+            ipalData.unshift(item);
+            saveStorage(STORAGE_KEYS.IPAL, ipalData);
+            pushCollectionToCloud('ipal', ipalData);
+            syncToGoogleSpreadsheet('IPAL', item);
+            publishNotification(
+                'Laporan IPAL Baru',
+                `pH ${ph} · COD ${cod} · BOD ${bod} · Debit ${debit.toFixed(2)} m³`,
+                'IPAL'
+            );
+
+            document.getElementById('ipalForm').reset();
+            resetPhotoField('ipalFoto', 'ipalFotoPreview', 'ipalFotoData');
+            setDefaultDates();
+            toggleIpalForm(false);
+            renderAll();
+            showToast(`Laporan IPAL tersimpan. Debit: ${debit.toFixed(2)} m³`);
+        }
+
+        function renderIpal() {
+            const latest = ipalData[0] || null;
+            document.getElementById('ipalLatestPh').textContent = latest ? Number(latest.ph).toFixed(1) : '-';
+            document.getElementById('ipalLatestCod').textContent = latest ? `${Number(latest.cod)} mg/L` : '-';
+            document.getElementById('ipalLatestBod').textContent = latest ? `${Number(latest.bod)} mg/L` : '-';
+            document.getElementById('ipalLatestToc').textContent = latest ? `${Number(latest.toc)} mg/L` : '-';
+            document.getElementById('ipalLatestOutlet').textContent = latest ? `${Number(latest.outlet).toFixed(2)} m³` : '-';
+            document.getElementById('ipalLatestDebit').textContent = latest ? `${Number(latest.debit || 0).toFixed(2)} m³` : '-';
+
+            const tbody = document.getElementById('ipalTableBody');
+            if (!tbody) return;
+
+            if (!ipalData.length) {
+                tbody.innerHTML = `<tr><td colspan="9" class="px-3 py-6 text-center text-xs text-slate-500">Belum ada riwayat laporan IPAL.</td></tr>`;
+                return;
+            }
+
+            tbody.innerHTML = ipalData.map(d => {
+                const actorLabel = d.updatedBy || d.petugas || '-';
+                const debitVal = Number(d.debit || 0);
+                return `
+                    <tr class="hover:bg-slate-50/80 transition">
+                        <td class="px-2.5 py-2 whitespace-nowrap text-[11px] text-slate-600">${escapeHtml(formatDateTime(d.tanggal))}</td>
+                        <td class="px-2 py-2 whitespace-nowrap font-bold text-slate-800">${Number(d.ph).toFixed(1)}</td>
+                        <td class="px-2 py-2 whitespace-nowrap">${Number(d.cod)}</td>
+                        <td class="px-2 py-2 whitespace-nowrap">${Number(d.bod)}</td>
+                        <td class="px-2 py-2 whitespace-nowrap">${Number(d.toc)}</td>
+                        <td class="px-2 py-2 whitespace-nowrap font-semibold text-cyan-800">${Number(d.outlet).toFixed(2)} m³</td>
+                        <td class="px-2 py-2 whitespace-nowrap font-extrabold ${debitVal < 0 ? 'text-rose-600' : 'text-teal-700'}">${debitVal.toFixed(2)} m³</td>
+                        <td class="px-2 py-2 text-[11px]">
+                            <div class="font-semibold text-slate-700">${escapeHtml(actorLabel)}</div>
+                            ${d.foto ? `<button type="button" onclick="openPhotoModal('${d.foto}', 'Dokumentasi IPAL')" class="mt-1 inline-flex items-center gap-1 text-[10px] font-bold text-teal-700 hover:underline"><i data-lucide="image" class="w-3 h-3"></i>Foto</button>` : `<span class="text-[10px] text-slate-400">Tanpa foto</span>`}
+                        </td>
+                        <td class="px-2 py-2 text-center">
+                            <button type="button" onclick="deleteItem('IPAL', ${d.id})" class="p-1.5 text-slate-400 hover:text-rose-600 rounded-lg transition" title="Hapus">
+                                <i data-lucide="trash-2" class="w-3.5 h-3.5"></i>
+                            </button>
+                        </td>
+                    </tr>
+                `;
+            }).join('');
+        }
+
+        /* =====================================================================
+           MODUL 3: OPERASIONAL LIMBAH B3 (INFEKSIUS & NON INFEKSIUS)
+           ===================================================================== */
+        function switchB3CategoryTab(kelompok) {
+            currentB3Category = kelompok === 'Non Infeksius' ? 'Non Infeksius' : 'Infeksius';
+
+            const pageInf = document.getElementById('b3PageInfeksius');
+            const pageNonInf = document.getElementById('b3PageNonInfeksius');
+            const btnInf = document.getElementById('b3SubTabBtnInfeksius');
+            const btnNonInf = document.getElementById('b3SubTabBtnNonInfeksius');
+
+            const isInf = currentB3Category === 'Infeksius';
+            if (pageInf) pageInf.classList.toggle('hidden', !isInf);
+            if (pageNonInf) pageNonInf.classList.toggle('hidden', isInf);
+
+            if (btnInf) {
+                btnInf.className = isInf
+                    ? 'py-2 px-3 rounded-xl text-xs font-extrabold flex items-center justify-center gap-1.5 transition bg-rose-600 text-white shadow-sm'
+                    : 'py-2 px-3 rounded-xl text-xs font-extrabold flex items-center justify-center gap-1.5 transition bg-slate-100 text-slate-600 hover:bg-slate-200';
+            }
+            if (btnNonInf) {
+                btnNonInf.className = !isInf
+                    ? 'py-2 px-3 rounded-xl text-xs font-extrabold flex items-center justify-center gap-1.5 transition bg-cyan-600 text-white shadow-sm'
+                    : 'py-2 px-3 rounded-xl text-xs font-extrabold flex items-center justify-center gap-1.5 transition bg-slate-100 text-slate-600 hover:bg-slate-200';
+            }
+            refreshIcons();
+        }
+
+        function toggleB3Form(kelompok, forceState) {
+            const isNonInf = kelompok === 'Non Infeksius';
+            const card = document.getElementById(isNonInf ? 'b3FormCardNonInfeksius' : 'b3FormCardInfeksius');
+            if (!card) return;
+            const shouldOpen = typeof forceState === 'boolean' ? forceState : card.classList.contains('hidden');
+            card.classList.toggle('hidden', !shouldOpen);
+            if (shouldOpen) {
+                setDefaultDates();
+                card.scrollIntoView({ behavior: 'smooth', block: 'start' });
+            }
+        }
+
+        function handleB3CategorySubmit(e, kelompok) {
+            e.preventDefault();
+            const isNonInf = kelompok === 'Non Infeksius';
+            const tanggalMasuk = document.getElementById(isNonInf ? 'b3NonInfTanggalMasuk' : 'b3InfTanggalMasuk').value;
+            const jamMasuk = document.getElementById(isNonInf ? 'b3NonInfJamMasuk' : 'b3InfJamMasuk').value;
+            const jenis = document.getElementById(isNonInf ? 'b3NonInfJenis' : 'b3InfJenis').value;
+            const berat = parseFloat(document.getElementById(isNonInf ? 'b3NonInfBerat' : 'b3InfBerat').value);
+            const petugasAktif = getActivePetugasLabel();
+
+            if (!tanggalMasuk || !jamMasuk || isNaN(berat) || berat <= 0) {
+                showToast('Lengkapi data limbah B3 dengan benar.');
+                return;
+            }
+
+            const item = {
+                id: Date.now(),
+                tanggal: `${tanggalMasuk}T${jamMasuk}`,
+                tanggalMasuk,
+                jamMasuk,
+                kelompok: isNonInf ? 'Non Infeksius' : 'Infeksius',
+                jenis,
+                tipe: 'Masuk',
+                berat,
+                petugas: petugasAktif,
+                updatedBy: petugasAktif,
+                updatedAt: new Date().toISOString()
+            };
+
+            b3Data.unshift(item);
+            saveStorage(STORAGE_KEYS.B3, b3Data);
+            pushCollectionToCloud('b3', b3Data);
+            syncToGoogleSpreadsheet(`Limbah B3 ${item.kelompok}`, item);
+            publishNotification(
+                `Limbah B3 ${item.kelompok}`,
+                `${jenis} seberat ${berat.toFixed(1)} kg masuk TPS`,
+                'Limbah B3'
+            );
+
+            document.getElementById(isNonInf ? 'b3FormNonInfeksius' : 'b3FormInfeksius').reset();
+            setDefaultDates();
+            toggleB3Form(item.kelompok, false);
+            renderAll();
+            showToast(`Catatan Limbah B3 ${item.kelompok} tersimpan.`);
+        }
+
+        function renderB3Rows(rows, emptyText) {
+            if (!rows.length) {
+                return `<tr><td colspan="5" class="px-3 py-6 text-center text-xs text-slate-500">${escapeHtml(emptyText)}</td></tr>`;
+            }
+
+            return rows.map(d => {
+                const actorLabel = d.updatedBy || d.petugas || '-';
+                const tglLabel = d.tanggalMasuk
+                    ? `${d.tanggalMasuk} ${d.jamMasuk || ''}`.trim()
+                    : formatDateTime(d.tanggal);
+                return `
+                    <tr class="hover:bg-slate-50/80 transition">
+                        <td class="px-2.5 py-2 whitespace-nowrap text-[11px] font-medium text-slate-600">${escapeHtml(tglLabel)}</td>
+                        <td class="px-2 py-2 font-semibold text-slate-800">${escapeHtml(d.jenis)}</td>
+                        <td class="px-2 py-2 whitespace-nowrap font-extrabold text-slate-900">${Number(d.berat || 0).toFixed(1)} kg</td>
+                        <td class="px-2 py-2 text-[11px] text-slate-600">${escapeHtml(actorLabel)}</td>
+                        <td class="px-2 py-2 text-center">
+                            <button type="button" onclick="deleteItem('B3', ${d.id})" class="p-1.5 text-slate-400 hover:text-rose-600 rounded-lg transition" title="Hapus">
+                                <i data-lucide="trash-2" class="w-3.5 h-3.5"></i>
+                            </button>
+                        </td>
+                    </tr>
+                `;
+            }).join('');
+        }
+
+        function renderB3() {
+            const infRows = b3Data.filter(d => inferB3Kelompok(d) === 'Infeksius');
+            const nonInfRows = b3Data.filter(d => inferB3Kelompok(d) === 'Non Infeksius');
+
+            const infMasuk = infRows.filter(d => d.tipe !== 'Keluar').reduce((s, d) => s + (parseFloat(d.berat) || 0), 0);
+            const infKeluar = infRows.filter(d => d.tipe === 'Keluar').reduce((s, d) => s + (parseFloat(d.berat) || 0), 0);
+            const infSaldo = infMasuk - infKeluar;
+
+            const nonInfMasuk = nonInfRows.filter(d => d.tipe !== 'Keluar').reduce((s, d) => s + (parseFloat(d.berat) || 0), 0);
+            const nonInfKeluar = nonInfRows.filter(d => d.tipe === 'Keluar').reduce((s, d) => s + (parseFloat(d.berat) || 0), 0);
+            const nonInfSaldo = nonInfMasuk - nonInfKeluar;
+
+            const setText = (id, val) => {
+                const el = document.getElementById(id);
+                if (el) el.textContent = val;
+            };
+
+            setText('b3InfDihasilkan', `${infMasuk.toFixed(1)} kg`);
+            setText('b3InfKeluar', `${infKeluar.toFixed(1)} kg`);
+            setText('b3InfSaldo', `${infSaldo.toFixed(1)} kg`);
+            setText('b3BadgeInfeksius', `${infSaldo.toFixed(1)} kg`);
+
+            setText('b3NonInfDihasilkan', `${nonInfMasuk.toFixed(1)} kg`);
+            setText('b3NonInfKeluar', `${nonInfKeluar.toFixed(1)} kg`);
+            setText('b3NonInfSaldo', `${nonInfSaldo.toFixed(1)} kg`);
+            setText('b3BadgeNonInfeksius', `${nonInfSaldo.toFixed(1)} kg`);
+
+            const tbodyInf = document.getElementById('b3TableInfeksiusBody');
+            const tbodyNonInf = document.getElementById('b3TableNonInfeksiusBody');
+            if (tbodyInf) tbodyInf.innerHTML = renderB3Rows(infRows, 'Belum ada catatan Limbah B3 Infeksius.');
+            if (tbodyNonInf) tbodyNonInf.innerHTML = renderB3Rows(nonInfRows, 'Belum ada catatan Limbah B3 Non Infeksius.');
+        }
+
+        /* =====================================================================
+           MODUL 4: SUMUR BOR (SUMUR BOR 1 & SUMUR BOR 2)
+           ===================================================================== */
+        function switchSumurBorTab(titik) {
+            currentSumurBorTitik = titik && titik.includes('2') ? 'Sumur Bor 2 (Instalasi)' : 'Sumur Bor 1 (Utama)';
+            const isSb2 = currentSumurBorTitik.includes('2');
+
+            const page1 = document.getElementById('sbPage1');
+            const page2 = document.getElementById('sbPage2');
+            const btn1 = document.getElementById('sbSubTabBtn1');
+            const btn2 = document.getElementById('sbSubTabBtn2');
+
+            if (page1) page1.classList.toggle('hidden', isSb2);
+            if (page2) page2.classList.toggle('hidden', !isSb2);
+
+            if (btn1) {
+                btn1.className = !isSb2
+                    ? 'py-2 px-3 rounded-xl text-xs font-extrabold flex items-center justify-center gap-1.5 transition bg-indigo-600 text-white shadow-sm'
+                    : 'py-2 px-3 rounded-xl text-xs font-extrabold flex items-center justify-center gap-1.5 transition bg-slate-100 text-slate-600 hover:bg-slate-200';
+            }
+            if (btn2) {
+                btn2.className = isSb2
+                    ? 'py-2 px-3 rounded-xl text-xs font-extrabold flex items-center justify-center gap-1.5 transition bg-teal-600 text-white shadow-sm'
+                    : 'py-2 px-3 rounded-xl text-xs font-extrabold flex items-center justify-center gap-1.5 transition bg-slate-100 text-slate-600 hover:bg-slate-200';
+            }
+            refreshIcons();
+        }
+
+        function getItemMeteranValue(d) {
+            if (!d) return 0;
+            const raw = d.meteran !== undefined ? d.meteran : d.angkaMeteran;
+            const num = parseFloat(raw);
+            return isNaN(num) ? 0 : num;
+        }
+
+        function getLatestSumurBorMeter(titik) {
+            const isSb2 = String(titik || '').includes('2');
+            const latest = sumurBorData.find(d => (d.titik || '').includes('2') === isSb2);
+            if (!latest) return null;
+            return getItemMeteranValue(latest);
+        }
+
+        function updateSumurBorPreview(sbNum) {
+            const suffix = sbNum === '2' ? '2' : '1';
+            const titik = suffix === '2' ? 'Sumur Bor 2 (Instalasi)' : 'Sumur Bor 1 (Utama)';
+            const meterInput = document.getElementById(`sb${suffix}Meteran`);
+            const previewEl = document.getElementById(`sb${suffix}DebitPreview`);
+            const infoEl = document.getElementById(`sb${suffix}PrevMeterInfo`);
+            const prevMeter = getLatestSumurBorMeter(titik);
+
+            if (infoEl) {
+                infoEl.textContent = prevMeter !== null
+                    ? `Angka meteran laporan terakhir: ${prevMeter.toFixed(2)} m³`
+                    : 'Angka meteran laporan terakhir: belum ada (0.00 m³)';
+            }
+
+            if (!meterInput || !previewEl) return;
+            const currentVal = parseFloat(meterInput.value);
+            if (isNaN(currentVal)) {
+                previewEl.value = '0.00 m³';
+                return;
+            }
+            const debit = prevMeter !== null ? (currentVal - prevMeter) : currentVal;
+            previewEl.value = `${debit.toFixed(2)} m³`;
+        }
+
+        function handleSumurBorSubmit(e, titik) {
+            e.preventDefault();
+            const isSb2 = String(titik || '').includes('2');
+            const prefix = isSb2 ? 'sb2' : 'sb1';
+            const titikLabel = isSb2 ? 'Sumur Bor 2 (Instalasi)' : 'Sumur Bor 1 (Utama)';
+            const meteran = parseFloat(document.getElementById(`${prefix}Meteran`).value);
+            const foto = document.getElementById(`${prefix}FotoData`).value || '';
+            const petugasAktif = getActivePetugasLabel();
+
+            if (isNaN(meteran) || meteran < 0) {
+                showToast('Masukkan angka meteran yang valid.');
+                return;
+            }
+            if (!foto) {
+                showToast('Lampirkan foto meteran terlebih dahulu.');
+                return;
+            }
+
+            const prevMeter = getLatestSumurBorMeter(titikLabel);
+            const debit = prevMeter !== null ? (meteran - prevMeter) : meteran;
+
+            const item = {
+                id: Date.now(),
+                tanggal: new Date().toISOString(),
+                titik: titikLabel,
+                meteran,
+                debit,
+                pemakaian: debit,
+                foto,
+                petugas: petugasAktif,
+                updatedBy: petugasAktif,
+                updatedAt: new Date().toISOString()
+            };
+
+            sumurBorData.unshift(item);
+            saveStorage(STORAGE_KEYS.SB, sumurBorData);
+            pushCollectionToCloud('sumurbor', sumurBorData);
+            syncToGoogleSpreadsheet(isSb2 ? 'Sumur Bor 2' : 'Sumur Bor 1', item);
+            publishNotification(
+                `Pelaporan ${titikLabel}`,
+                `Meteran ${meteran.toFixed(2)} m³ · Debit ${debit.toFixed(2)} m³`,
+                'Sumur Bor'
+            );
+
+            document.getElementById(isSb2 ? 'sumurBorForm2' : 'sumurBorForm1').reset();
+            resetPhotoField(`${prefix}Foto`, `${prefix}FotoPreview`, `${prefix}FotoData`);
+            renderAll();
+            updateSumurBorPreview(isSb2 ? '2' : '1');
+            showToast(`Pelaporan ${titikLabel} tersimpan. Debit: ${debit.toFixed(2)} m³`);
+        }
+
+        function renderSumurBorRows(rows, titikLabel) {
+            if (!rows.length) {
+                return `<tr><td colspan="5" class="px-3 py-6 text-center text-xs text-slate-500">Belum ada riwayat pelaporan ${escapeHtml(titikLabel)}.</td></tr>`;
+            }
+
+            return rows.map(d => {
+                const actorLabel = d.updatedBy || d.petugas || '-';
+                const meterVal = getItemMeteranValue(d);
+                const debitVal = Number(d.debit !== undefined ? d.debit : d.pemakaian) || 0;
+                return `
+                    <tr class="hover:bg-slate-50/80 transition">
+                        <td class="px-2.5 py-2 whitespace-nowrap text-[11px] text-slate-600">${escapeHtml(formatDateTime(d.tanggal))}</td>
+                        <td class="px-2 py-2 whitespace-nowrap font-bold text-slate-800">${meterVal.toFixed(2)} m³</td>
+                        <td class="px-2 py-2 whitespace-nowrap font-extrabold ${debitVal < 0 ? 'text-rose-600' : 'text-teal-700'}">${debitVal.toFixed(2)} m³</td>
+                        <td class="px-2 py-2 text-[11px]">
+                            <div class="font-semibold text-slate-700">${escapeHtml(actorLabel)}</div>
+                            ${d.foto ? `<button type="button" onclick="openPhotoModal('${d.foto}', '${escapeHtml(titikLabel)}')" class="mt-1 inline-flex items-center gap-1 text-[10px] font-bold text-teal-700 hover:underline"><i data-lucide="image" class="w-3 h-3"></i>Foto</button>` : `<span class="text-[10px] text-slate-400">Tanpa foto</span>`}
+                        </td>
+                        <td class="px-2 py-2 text-center">
+                            <button type="button" onclick="deleteItem('SB', ${d.id})" class="p-1.5 text-slate-400 hover:text-rose-600 rounded-lg transition" title="Hapus">
+                                <i data-lucide="trash-2" class="w-3.5 h-3.5"></i>
+                            </button>
+                        </td>
+                    </tr>
+                `;
+            }).join('');
+        }
+
+        function renderSumurBor() {
+            const sb1Rows = sumurBorData.filter(d => !(d.titik || '').includes('2'));
+            const sb2Rows = sumurBorData.filter(d => (d.titik || '').includes('2'));
+
+            const sb1Total = sb1Rows.reduce((s, d) => s + (parseFloat(d.debit !== undefined ? d.debit : d.pemakaian) || 0), 0);
+            const sb2Total = sb2Rows.reduce((s, d) => s + (parseFloat(d.debit !== undefined ? d.debit : d.pemakaian) || 0), 0);
+
+            const sb1Latest = sb1Rows[0] ? `${getItemMeteranValue(sb1Rows[0]).toFixed(2)} m³` : '-';
+            const sb2Latest = sb2Rows[0] ? `${getItemMeteranValue(sb2Rows[0]).toFixed(2)} m³` : '-';
+
+            const el1Total = document.getElementById('sb1TotalPemakaian');
+            const el1Latest = document.getElementById('sb1LatestMeter');
+            const el2Total = document.getElementById('sb2TotalPemakaian');
+            const el2Latest = document.getElementById('sb2LatestMeter');
+
+            if (el1Total) el1Total.textContent = `${sb1Total.toFixed(2)} m³`;
+            if (el1Latest) el1Latest.textContent = sb1Latest;
+            if (el2Total) el2Total.textContent = `${sb2Total.toFixed(2)} m³`;
+            if (el2Latest) el2Latest.textContent = sb2Latest;
+
+            const tbody1 = document.getElementById('sb1TableBody');
+            const tbody2 = document.getElementById('sb2TableBody');
+            if (tbody1) tbody1.innerHTML = renderSumurBorRows(sb1Rows, 'Sumur Bor 1 (Utama)');
+            if (tbody2) tbody2.innerHTML = renderSumurBorRows(sb2Rows, 'Sumur Bor 2 (Instalasi)');
+        }
+
+        /* =====================================================================
+           HAPUS DATA & EKSPOR EXCEL BULANAN
+           ===================================================================== */
+        function deleteItem(type, id) {
+            if (type === 'SAN') {
+                const target = sanitasiData.find(d => d.id === id);
+                sanitasiData = sanitasiData.filter(d => d.id !== id);
+                saveStorage(STORAGE_KEYS.SAN, sanitasiData);
+                pushCollectionToCloud('sanitasi', sanitasiData);
+                if (target) publishNotification('Hapus Inspeksi', `Laporan ${target.tempat} dihapus`, 'Inspeksi');
+            } else if (type === 'IPAL') {
+                ipalData = ipalData.filter(d => d.id !== id);
+                saveStorage(STORAGE_KEYS.IPAL, ipalData);
+                pushCollectionToCloud('ipal', ipalData);
+                publishNotification('Hapus Laporan IPAL', 'Satu data laporan IPAL dihapus', 'IPAL');
+            } else if (type === 'B3') {
+                const target = b3Data.find(d => d.id === id);
+                b3Data = b3Data.filter(d => d.id !== id);
+                saveStorage(STORAGE_KEYS.B3, b3Data);
+                pushCollectionToCloud('b3', b3Data);
+                if (target) publishNotification('Hapus Limbah B3', `Catatan ${target.jenis} dihapus`, 'Limbah B3');
+            } else if (type === 'SB') {
+                const target = sumurBorData.find(d => d.id === id);
+                sumurBorData = sumurBorData.filter(d => d.id !== id);
+                saveStorage(STORAGE_KEYS.SB, sumurBorData);
+                pushCollectionToCloud('sumurbor', sumurBorData);
+                if (target) publishNotification('Hapus Sumur Bor', `Catatan ${target.titik} dihapus`, 'Sumur Bor');
+            }
+            renderAll();
+            updateIpalDebitPreview();
+            updateSumurBorPreview('1');
+            updateSumurBorPreview('2');
+            showToast('Data berhasil dihapus.');
+        }
+
+        function getMonthKeyFromDate(dateStr) {
+            if (!dateStr) return '';
+            const dt = new Date(dateStr);
+            if (!isNaN(dt.getTime())) {
+                const pad = n => String(n).padStart(2, '0');
+                return `${dt.getFullYear()}-${pad(dt.getMonth() + 1)}`;
+            }
+            return String(dateStr).slice(0, 7);
+        }
+
+        function exportExcel(moduleType) {
+            try {
+                if (!window.XLSX) {
+                    showToast('Library Excel belum siap.');
+                    return;
+                }
+
+                const monthInputMap = {
+                    SAN: 'exportMonthSanitasi',
+                    IPAL: 'exportMonthIpal',
+                    B3_INFEKSIUS: 'exportMonthB3Infeksius',
+                    B3_NON_INFEKSIUS: 'exportMonthB3NonInfeksius',
+                    SB1: 'exportMonthSumurBor1',
+                    SB2: 'exportMonthSumurBor2'
+                };
+
+                const selectedMonth = document.getElementById(monthInputMap[moduleType])?.value || '';
+                if (!selectedMonth) {
+                    showToast('Pilih bulan terlebih dahulu untuk mengekspor Excel.');
+                    return;
+                }
+
+                let rows = [];
+                let sheetName = 'Laporan';
+                let fileName = `kesling_track_${moduleType.toLowerCase()}_${selectedMonth}.xlsx`;
+
+                if (moduleType === 'SAN') {
+                    sheetName = 'Inspeksi';
+                    rows = sanitasiData
+                        .filter(d => getMonthKeyFromDate(d.tanggal) === selectedMonth)
+                        .map((d, idx) => ({
+                            No: idx + 1,
+                            Waktu: formatDateTime(d.tanggal),
+                            Lantai: d.lantai || '-',
+                            Tempat: d.tempat || '-',
+                            Kategori: d.kategori || '-',
+                            Perbaikan: d.perbaikan || '-',
+                            Pencegahan: d.pencegahan || '-',
+                            Status: d.status || '-',
+                            Petugas: d.updatedBy || d.petugas || '-'
+                        }));
+                } else if (moduleType === 'IPAL') {
+                    sheetName = 'IPAL';
+                    rows = ipalData
+                        .filter(d => getMonthKeyFromDate(d.tanggal) === selectedMonth)
+                        .map((d, idx) => ({
+                            No: idx + 1,
+                            Waktu: formatDateTime(d.tanggal),
+                            pH: Number(d.ph || 0),
+                            COD_mg_L: Number(d.cod || 0),
+                            BOD_mg_L: Number(d.bod || 0),
+                            TOC_mg_L: Number(d.toc || 0),
+                            Meteran_Outlet_m3: Number(d.outlet || 0),
+                            Debit_m3: Number(d.debit || 0),
+                            Petugas: d.updatedBy || d.petugas || '-'
+                        }));
+                } else if (moduleType === 'B3_INFEKSIUS' || moduleType === 'B3_NON_INFEKSIUS') {
+                    const targetGroup = moduleType === 'B3_NON_INFEKSIUS' ? 'Non Infeksius' : 'Infeksius';
+                    sheetName = moduleType === 'B3_NON_INFEKSIUS' ? 'B3 Non Infeksius' : 'B3 Infeksius';
+                    rows = b3Data
+                        .filter(d => inferB3Kelompok(d) === targetGroup && getMonthKeyFromDate(d.tanggalMasuk || d.tanggal) === selectedMonth)
+                        .map((d, idx) => ({
+                            No: idx + 1,
+                            Tanggal_Masuk: d.tanggalMasuk || formatDateTime(d.tanggal),
+                            Jam_Masuk: d.jamMasuk || '-',
+                            Kelompok: targetGroup,
+                            Jenis: d.jenis || '-',
+                            Tipe: d.tipe || 'Masuk',
+                            Berat_kg: Number(d.berat || 0),
+                            Petugas: d.updatedBy || d.petugas || '-'
+                        }));
+                } else if (moduleType === 'SB1' || moduleType === 'SB2') {
+                    const isSb2 = moduleType === 'SB2';
+                    sheetName = isSb2 ? 'Sumur Bor 2' : 'Sumur Bor 1';
+                    rows = sumurBorData
+                        .filter(d => ((d.titik || '').includes('2') === isSb2) && getMonthKeyFromDate(d.tanggal) === selectedMonth)
+                        .map((d, idx) => ({
+                            No: idx + 1,
+                            Tanggal: formatDateTime(d.tanggal),
+                            Titik: d.titik || (isSb2 ? 'Sumur Bor 2 (Instalasi)' : 'Sumur Bor 1 (Utama)'),
+                            Angka_Meteran_m3: Number(getItemMeteranValue(d)),
+                            Debit_m3: Number(d.debit !== undefined ? d.debit : d.pemakaian || 0),
+                            Petugas: d.updatedBy || d.petugas || '-'
+                        }));
+                }
+
+                if (!rows.length) {
+                    showToast(`Tidak ada data untuk bulan ${selectedMonth}.`);
+                    return;
+                }
+
+                const wb = XLSX.utils.book_new();
+                const ws = XLSX.utils.json_to_sheet(rows);
+                XLSX.utils.book_append_sheet(wb, ws, sheetName);
+                XLSX.writeFile(wb, fileName);
+                showToast(`File ${fileName} berhasil diunduh.`);
+            } catch (err) {
+                console.warn('Gagal ekspor Excel:', err);
+                showToast('Terjadi kesalahan saat mengekspor Excel.');
+            }
+        }
+
+        /* =====================================================================
+           INISIALISASI APLIKASI
+           ===================================================================== */
+        function renderAll() {
+            renderHomeSummary();
+            renderSanitasi();
+            renderIpal();
+            renderB3();
+            renderSumurBor();
+            renderNotificationsUi();
+            refreshIcons();
+        }
+
+        function initApp() {
+            sanitasiData = loadStorage(STORAGE_KEYS.SAN, []);
+            ipalData = loadStorage(STORAGE_KEYS.IPAL, []);
+            b3Data = loadStorage(STORAGE_KEYS.B3, []);
+            sumurBorData = loadStorage(STORAGE_KEYS.SB, []);
+            notificationsData = loadStorage(STORAGE_KEYS.NOTIF, []);
+            lastReadNotifId = Number(loadStorage(STORAGE_KEYS.NOTIF_READ, 0)) || 0;
+            notificationsData.forEach(n => knownNotifIds.add(n.id));
+
+            loadGoogleSheetConfig();
+            accessAccounts = loadStorage(STORAGE_KEYS.ACCOUNTS, []);
+            normalizeAccounts();
+
+            const savedPetugas = loadStorage(STORAGE_KEYS.PETUGAS, null);
+            if (savedPetugas && savedPetugas.nama && savedPetugas.nama !== 'Tamu / Belum Masuk') {
+                petugasAccount = {
+                    nama: savedPetugas.nama,
+                    email: '',
+                    role: 'Petugas Kesling'
+                };
+            } else {
+                petugasAccount = {
+                    nama: accessAccounts[0]?.nama || 'Petugas Kesling',
+                    email: '',
+                    role: 'Petugas Kesling'
+                };
+            }
+            isLoggedIn = true;
+
+            setDefaultDates();
+            applyPetugasToForms();
+            updateLoginVisibility();
+            updateGoogleSheetUi();
+            updateRealtimeBadgeUi();
+            initCloudRealtime();
+            renderAll();
+            updateIpalDebitPreview();
+            updateSumurBorPreview('1');
+            updateSumurBorPreview('2');
+            refreshIcons();
+        }
+
+        window.addEventListener('DOMContentLoaded', initApp);
+    </script>
+</body>
+</html>
+```
